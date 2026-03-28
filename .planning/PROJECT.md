@@ -12,7 +12,8 @@
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] JWT 认证与 RBAC 权限控制 — Validated in Phase 1: Foundation & Auth (JWT register/login/refresh/logout, RBAC deferred to v2)
+- [x] 前后端分离架构，提供 REST API 与 WebSocket 流式接口 — Validated in Phase 1: FastAPI skeleton with REST API, WebSocket deferred to Phase 3
 
 ### Active
 
@@ -20,7 +21,6 @@
 - [ ] 内置技能（Skill）系统，支持动态加载与热更新
 - [ ] 完整实现 MCP（Model Context Protocol）协议，无缝对接外部工具与服务
 - [ ] 具备短期/长期记忆能力，支持对话上下文与知识库检索
-- [ ] 前后端分离架构，提供 REST API 与 WebSocket 流式接口
 - [ ] 支持水平扩展与高并发场景
 - [ ] 对话模块：消息展示、输入框、流式响应渲染、思考过程展示
 - [ ] 技能管理模块：技能列表、技能市场、技能配置与启用/禁用
@@ -29,7 +29,6 @@
 - [ ] 用户系统模块：登录/注册、个人设置、对话历史管理
 - [ ] Agent 引擎：基于 LangGraph 的有状态图工作流（分析→规划→执行→反思→响应）
 - [ ] 工具注册中心：统一管理内置工具、技能、MCP 工具
-- [ ] JWT 认证与 RBAC 权限控制
 - [ ] WebSocket 实时通信，支持 thinking/tool_call/tool_result/chunk/done 事件
 
 ### Out of Scope
@@ -104,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after initialization*
+*Last updated: 2026-03-28 after Phase 1 completion*
