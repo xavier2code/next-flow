@@ -1,0 +1,29 @@
+[project]
+name = "nextflow-backend"
+version = "0.1.0"
+description = "NextFlow - Universal Agent Platform Backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.135.0,<0.136.0",
+    "uvicorn[standard]>=0.34.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pydantic-settings>=2.0.0",
+    "structlog>=24.0.0",
+    "redis>=5.0.0",
+    "pyjwt[crypto]>=2.10.0",
+    "pwdlib[argon2]>=0.2.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
