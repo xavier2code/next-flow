@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — FastAPI skeleton, Docker Compose, config, Redis, health check (AUTH-04, AUTH-06)
+- [x] 01-01-PLAN.md — FastAPI skeleton, Docker Compose, config, Redis, health check (AUTH-04, AUTH-06)
 - [ ] 01-02-PLAN.md — SQLAlchemy models and Alembic async migrations (AUTH-05)
 - [ ] 01-03-PLAN.md — JWT auth with registration, login, refresh, logout (AUTH-01, AUTH-02, AUTH-03)
 
@@ -144,7 +144,7 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Auth | 0/3 | Planning complete | - |
+| 1. Foundation & Auth | 1/3 | In Progress|  |
 | 2. Agent Engine Core | 0/3 | Not started | - |
 | 3. Communication Layer | 0/2 | Not started | - |
 | 4. Memory System | 0/2 | Not started | - |
