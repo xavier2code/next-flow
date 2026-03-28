@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-28T15:18:58.734Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-03-28T15:33:10.501Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 ## Current Position
 
 Phase: 01 (foundation-auth) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-28
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 8min | 2 tasks | 19 files |
+| Phase 01 P02 | 8min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,8 @@ Recent decisions affecting current work:
 
 - [Phase 01]: Override D-15: use PyJWT + pwdlib[argon2] instead of unmaintained python-jose + passlib
 - [Phase 01]: Redis host port mapped to 6380 to avoid conflict with existing Redis on 6379
+- [Phase 01]: Used async_engine_from_config with NullPool in Alembic env.py for clean migration connections
+- [Phase 01]: Alembic env.py imports from app.models to trigger all model registrations with Base.metadata
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-28T15:18:58.729Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-03-28T15:33:10.497Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

@@ -11,7 +11,7 @@
 - [ ] **AUTH-02**: User can log in and receive JWT token with refresh mechanism
 - [ ] **AUTH-03**: User session persists across browser refresh via token refresh
 - [x] **AUTH-04**: FastAPI project skeleton with config management, logging, and error handling
-- [ ] **AUTH-05**: PostgreSQL schema for users, conversations, agents, skills, mcp_servers, tools
+- [x] **AUTH-05**: PostgreSQL schema for users, conversations, agents, skills, mcp_servers, tools
 - [x] **AUTH-06**: Redis setup for session store and cache
 
 ### Agent Engine
@@ -106,7 +106,7 @@
 | AUTH-02 | Phase 1 | Pending |
 | AUTH-03 | Phase 1 | Pending |
 | AUTH-04 | Phase 1 | Complete |
-| AUTH-05 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Complete |
 | AUTH-06 | Phase 1 | Complete |
 | AGNT-01 | Phase 2 | Pending |
 | AGNT-02 | Phase 2 | Pending |

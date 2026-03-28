@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — FastAPI skeleton, Docker Compose, config, Redis, health check (AUTH-04, AUTH-06)
-- [ ] 01-02-PLAN.md — SQLAlchemy models and Alembic async migrations (AUTH-05)
+- [x] 01-02-PLAN.md — SQLAlchemy models and Alembic async migrations (AUTH-05)
 - [ ] 01-03-PLAN.md — JWT auth with registration, login, refresh, logout (AUTH-01, AUTH-02, AUTH-03)
 
 ### Phase 2: Agent Engine Core
