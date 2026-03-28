@@ -1,29 +1,31 @@
 from collections.abc import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 
-
-# ---------------------------------------------------------------------------
-# Test database engine (uses the same Postgres but creates/drops tables per session)
-# ---------------------------------------------------------------------------
-test_engine = create_async_engine(settings.database_url, echo=False)
+# NullPool prevents cross-event-loop connection reuse. Each connection is
+# opened and closed within the same async context, avoiding the
+# "Future attached to a different loop" error.
+test_engine = create_async_engine(
+    settings.database_url,
+    echo=False,
+    poolclass=NullPool,
+)
 TestSessionFactory = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
-
-
-@pytest.fixture(scope="session")
-def anyio_backend():
-    return "asyncio"
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -54,7 +56,7 @@ async def test_redis() -> AsyncGenerator[aioredis.Redis, None]:
     )
     yield r
     await r.flushdb()
-    await r.close()
+    await r.aclose()
 
 
 @pytest_asyncio.fixture
