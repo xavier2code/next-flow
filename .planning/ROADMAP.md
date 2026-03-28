@@ -49,12 +49,13 @@ Plans:
   3. Conversation state persists to PostgreSQL via PostgresSaver checkpointer and can be resumed after interruption
   4. Agent can invoke at least one LLM (OpenAI or Ollama) and return a valid response
   5. Tool Registry accepts tool registrations and routes invocations to the correct handler
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md — AgentState TypedDict, StateGraph 4-node pipeline, conditional edges, RemainingSteps (AGNT-01, AGNT-02, AGNT-06)
+- [ ] 02-02-PLAN.md — LLM factory with OpenAI + Ollama providers, Settings extension (AGNT-04)
+- [ ] 02-03-PLAN.md — Tool Registry with Protocol handlers, decorator registration, built-in tools (AGNT-05, AGNT-06)
+- [ ] 02-04-PLAN.md — PostgresSaver checkpointer, node wiring to LLM + Tool Registry, lifespan init (AGNT-03)
 
 ### Phase 3: Communication Layer
 **Goal**: External clients can interact with the agent engine via REST endpoints and real-time WebSocket streaming
@@ -144,8 +145,8 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Auth | 1/3 | In Progress|  |
-| 2. Agent Engine Core | 0/3 | Not started | - |
+| 1. Foundation & Auth | 3/3 | Complete | 2026-03-28 |
+| 2. Agent Engine Core | 0/4 | Planning | - |
 | 3. Communication Layer | 0/2 | Not started | - |
 | 4. Memory System | 0/2 | Not started | - |
 | 5. MCP Integration | 0/2 | Not started | - |
