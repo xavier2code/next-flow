@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://nextflow:nextflow@localhost:5432/nextflow"
 
     # Redis
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://localhost:6380/0"
 
     # JWT
     jwt_secret_key: str = "change-me-in-production"
