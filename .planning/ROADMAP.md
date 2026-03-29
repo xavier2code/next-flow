@@ -80,12 +80,13 @@ Plans:
   1. Last N messages per conversation are cached in Redis and available for context retrieval
   2. Analyze node injects short-term memory context into the agent workflow before planning
   3. LangGraph Store enables cross-thread semantic search for long-term memory retrieval
-  4. Vector database (Qdrant) is running with collection schemas for embedding storage and similarity search
-**Plans**: TBD
+  4. PostgreSQL with pgvector extension supports vector similarity search for embedding storage
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — PostgreSQL pgvector upgrade, Store async factory, graph store wiring, Settings embedding config, test scaffold (MEM-04)
+- [ ] 04-02-PLAN.md — Memory service module: ShortTermMemory (Redis sliding window), LongTermMemory (Store interaction), get_embedder factory, unified MemoryService (MEM-01)
+- [ ] 04-03-PLAN.md — Analyze node memory injection, Respond node async write-back, MemoryService lifespan wiring (MEM-02, MEM-03)
 
 ### Phase 5: MCP Integration
 **Goal**: External MCP servers can be registered, discovered, and their tools invoked through the unified Tool Registry
@@ -147,8 +148,8 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 3/3 | Complete | 2026-03-28 |
 | 2. Agent Engine Core | 4/4 | Complete | 2026-03-29 |
-| 3. Communication Layer | 0/2 | Planning | - |
-| 4. Memory System | 0/2 | Not started | - |
+| 3. Communication Layer | 2/2 | Complete | 2026-03-29 |
+| 4. Memory System | 0/3 | Planning | - |
 | 5. MCP Integration | 0/2 | Not started | - |
 | 6. Skill System | 0/2 | Not started | - |
 | 7. Frontend | 0/3 | Not started | - |
