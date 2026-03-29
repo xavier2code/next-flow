@@ -25,7 +25,7 @@
 
 ### Communication
 
-- [ ] **COMM-01**: REST API endpoints for CRUD on conversations, agents, and settings
+- [x] **COMM-01**: REST API endpoints for CRUD on conversations, agents, and settings
 - [x] **COMM-02**: WebSocket endpoint with LangGraph v2 streaming integration
 - [x] **COMM-03**: Event mapping from LangGraph StreamParts to WebSocket events (thinking, tool_call, tool_result, chunk, done)
 - [x] **COMM-04**: Connection lifecycle management with heartbeat, cleanup on disconnect
@@ -114,7 +114,7 @@
 | AGNT-04 | Phase 2 | Complete |
 | AGNT-05 | Phase 2 | Complete |
 | AGNT-06 | Phase 2 | Complete |
-| COMM-01 | Phase 3 | Pending |
+| COMM-01 | Phase 3 | Complete |
 | COMM-02 | Phase 3 | Complete |
 | COMM-03 | Phase 3 | Complete |
 | COMM-04 | Phase 3 | Complete |

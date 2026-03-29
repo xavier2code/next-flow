@@ -69,7 +69,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — REST API CRUD for conversations, agents, settings, messages with cursor pagination and envelope format (COMM-01)
+- [x] 03-01-PLAN.md — REST API CRUD for conversations, agents, settings, messages with cursor pagination and envelope format (COMM-01)
 - [x] 03-02-PLAN.md — WebSocket streaming with event mapper, ConnectionManager, Redis pub/sub, and connection lifecycle (COMM-02, COMM-03, COMM-04)
 
 ### Phase 4: Memory System
