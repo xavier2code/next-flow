@@ -46,6 +46,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.checkpointer = await create_checkpointer(settings.database_url)
     logger.info("checkpointer_initialized")
 
+    # Store initialization (long-term memory with semantic search)
+    from app.services.agent_engine.store import create_store
+
+    store_result = await create_store(settings.database_url)
+    app.state.store = store_result["store"]
+    app.state.store_ctx = store_result["store_ctx"]
+    logger.info("store_initialized")
+
     # ConnectionManager for WebSocket connections
     app.state.connection_manager = ConnectionManager()
     logger.info("connection_manager_initialized")
@@ -71,6 +79,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await app.state.pubsub_task
     except asyncio.CancelledError:
         pass
+
+    # Clean up Store context manager
+    if hasattr(app.state, "store_ctx") and app.state.store_ctx:
+        await app.state.store_ctx.__aexit__(None, None, None)
 
     await app.state.redis.close()
     await engine.dispose()

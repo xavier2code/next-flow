@@ -7,6 +7,7 @@ If Plan decides no tools are needed, conditional edge skips Execute and goes to 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.store.base import BaseStore
 
 from app.services.agent_engine.nodes.analyze import analyze_node
 from app.services.agent_engine.nodes.execute import execute_node
@@ -30,12 +31,15 @@ def should_execute(state: AgentState) -> str:
 
 def build_graph(
     checkpointer: AsyncPostgresSaver | None = None,
+    store: BaseStore | None = None,
 ) -> CompiledStateGraph:
     """Build and compile the agent workflow StateGraph.
 
     Args:
         checkpointer: Optional AsyncPostgresSaver for conversation persistence.
                      If None, graph runs without checkpointing (for testing).
+        store: Optional BaseStore for long-term memory with semantic search.
+               If None, graph runs without store access.
 
     Returns:
         CompiledStateGraph ready for invocation.
@@ -60,4 +64,4 @@ def build_graph(
     builder.add_edge("execute", "respond")
     builder.add_edge("respond", END)
 
-    return builder.compile(checkpointer=checkpointer)
+    return builder.compile(checkpointer=checkpointer, store=store)
