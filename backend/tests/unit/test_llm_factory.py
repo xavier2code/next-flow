@@ -52,7 +52,7 @@ class TestGetLLMFactory:
 
     def test_get_llm_ollama(self):
         """get_llm with provider='ollama' returns ChatOllama instance."""
-        from langchain_community.chat_models import ChatOllama
+        from langchain_ollama import ChatOllama
 
         from app.services.agent_engine.llm import get_llm
 
@@ -103,7 +103,7 @@ class TestGetLLMFactory:
 
         with patch("app.services.agent_engine.llm.settings") as mock_settings:
             mock_settings.openai_api_key = "test-key"
-            result = get_llm({"provider": "openai", "temperature": 0.5})
+            result = get_llm({"provider": "openai", "model": "gpt-4o", "temperature": 0.5})
 
         assert result.temperature == 0.5
 
@@ -113,7 +113,7 @@ class TestGetLLMFactory:
 
         with patch("app.services.agent_engine.llm.settings") as mock_settings:
             mock_settings.openai_api_key = "test-key"
-            result = get_llm({"provider": "openai", "max_tokens": 2048})
+            result = get_llm({"provider": "openai", "model": "gpt-4o", "max_tokens": 2048})
 
         assert result.max_tokens == 2048
 

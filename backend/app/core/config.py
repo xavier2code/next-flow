@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
+    # LLM Provider Configuration (D-08, D-09)
+    default_provider: str = "openai"
+    default_model: str = "gpt-4o"
+    openai_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
+
     # App
     debug: bool = False
     log_level: str = "INFO"
