@@ -129,25 +129,35 @@ async def test_analyze_context_injection():
 
     mock_memory_service = AsyncMock()
     mock_memory_service.get_context = AsyncMock(
-        return_value=[{"role": "system", "content": "Remembered: user likes Python"}]
+        return_value={
+            "summary": None,
+            "messages": [{"role": "user", "content": "Remembered: user likes Python"}],
+        }
     )
+    mock_memory_service.get_long_term_context = AsyncMock(return_value=[])
 
     state = {
         "messages": [{"role": "user", "content": "What language should I learn?"}],
-        "conversation_id": "test-conv-ctx",
+        "plan": "",
+        "scratchpad": "",
+        "remaining_steps": 25,
+        "user_id": "test-user",
     }
 
+    config = {"configurable": {"thread_id": "test-conv-ctx"}}
+
     with patch(
-        "app.services.agent_engine.nodes.analyze.memory_service",
+        "app.services.agent_engine.nodes.analyze._memory_service",
         mock_memory_service,
-        create=True,
     ):
-        result = await analyze_node(state)
+        result = await analyze_node(state, config=config)
 
     # The result should have memory context injected
-    messages = result.get("messages", state["messages"])
-    # At minimum, the original message should still be present
+    messages = result.get("messages", [])
+    # Should have at least the injected short-term memory message
     assert len(messages) >= 1
+    # Verify get_context was called with the thread_id from config
+    mock_memory_service.get_context.assert_called_once_with("test-conv-ctx")
 
 
 # ---------------------------------------------------------------------------

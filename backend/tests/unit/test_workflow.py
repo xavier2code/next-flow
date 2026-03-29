@@ -36,10 +36,10 @@ class TestAgentStateSchema:
         # remaining_steps exists
         assert "remaining_steps" in annotations
 
-    def test_agent_state_excludes_user_id_and_thread_id(self) -> None:
-        """AgentState does NOT have user_id or thread_id fields (D-17)."""
+    def test_agent_state_has_optional_user_id_excludes_thread_id(self) -> None:
+        """AgentState has optional user_id (for memory scoping) but NOT thread_id (comes from config)."""
         annotations = AgentState.__annotations__
-        assert "user_id" not in annotations
+        assert "user_id" in annotations
         assert "thread_id" not in annotations
 
 
