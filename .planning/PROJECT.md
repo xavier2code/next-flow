@@ -14,10 +14,12 @@
 
 - [x] JWT 认证与 RBAC 权限控制 — Validated in Phase 1: Foundation & Auth (JWT register/login/refresh/logout, RBAC deferred to v2)
 - [x] 前后端分离架构，提供 REST API 与 WebSocket 流式接口 — Validated in Phase 1: FastAPI skeleton with REST API, WebSocket deferred to Phase 3
+- [x] 支持多种 LLM 模型（OpenAI、本地模型等）的灵活接入与切换 — Validated in Phase 2: LLM factory with OpenAI + Ollama providers
+- [x] Agent 引擎：基于 LangGraph 的有状态图工作流（分析→规划→执行→反思→响应） — Validated in Phase 2: StateGraph 4-node pipeline with checkpointer
+- [x] 工具注册中心：统一管理内置工具、技能、MCP 工具 — Validated in Phase 2: Protocol-based Tool Registry with decorator registration
 
 ### Active
 
-- [ ] 支持多种 LLM 模型（OpenAI、本地模型等）的灵活接入与切换
 - [ ] 内置技能（Skill）系统，支持动态加载与热更新
 - [ ] 完整实现 MCP（Model Context Protocol）协议，无缝对接外部工具与服务
 - [ ] 具备短期/长期记忆能力，支持对话上下文与知识库检索
@@ -27,8 +29,6 @@
 - [ ] MCP 管理模块：MCP 服务器注册、连接状态监控、工具列表展示
 - [ ] Agent 配置模块：模型选择、提示词编辑、参数调节
 - [ ] 用户系统模块：登录/注册、个人设置、对话历史管理
-- [ ] Agent 引擎：基于 LangGraph 的有状态图工作流（分析→规划→执行→反思→响应）
-- [ ] 工具注册中心：统一管理内置工具、技能、MCP 工具
 - [ ] WebSocket 实时通信，支持 thinking/tool_call/tool_result/chunk/done 事件
 
 ### Out of Scope
@@ -77,8 +77,8 @@
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| LangGraph 作为 Agent 编排引擎 | 有状态图工作流天然支持条件边、循环、状态传递，适合复杂 Agent 流程 | — Pending |
-| LangChain 作为 LLM 抽象层 | 统一接口支持多模型切换，降低模型锁定风险 | — Pending |
+| LangGraph 作为 Agent 编排引擎 | 有状态图工作流天然支持条件边、循环、状态传递，适合复杂 Agent 流程 | — Validated: 4-node pipeline with conditional edges, checkpointer (Phase 2) |
+| LangChain 作为 LLM 抽象层 | 统一接口支持多模型切换，降低模型锁定风险 | — Validated: OpenAI + Ollama factory, Plan/Respond nodes (Phase 2) |
 | shadcn/ui 作为前端组件库 | Radix UI 无障碍 + TailwindCSS 灵活样式，社区活跃 | — Pending |
 | Zustand 状态管理 | 轻量级，API 简洁，适合中等复杂度应用 | — Pending |
 | MCP 协议集成 | 标准化工具协议，生态正在快速扩展，避免自建工具协议的维护成本 | — Pending |
@@ -103,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after Phase 1 completion*
+*Last updated: 2026-03-29 after Phase 2 completion*
