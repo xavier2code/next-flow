@@ -27,6 +27,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         decode_responses=True,
     )
 
+    # Tool Registry initialization
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_registry.builtins import register_builtin_tools
+
+    registry = get_tool_registry()
+    register_builtin_tools(registry)
+    app.state.tool_registry = registry
+    logger.info("tool_registry_initialized", tools=registry.list_tools())
+
+    # Checkpointer initialization
+    from app.services.agent_engine.checkpointer import create_checkpointer
+
+    app.state.checkpointer = await create_checkpointer(settings.database_url)
+    logger.info("checkpointer_initialized")
+
     yield
 
     logger.info("shutting_down_application")
