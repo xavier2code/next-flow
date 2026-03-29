@@ -55,7 +55,7 @@ Plans:
 - [x] 02-01-PLAN.md — AgentState TypedDict, StateGraph 4-node pipeline, conditional edges, RemainingSteps (AGNT-01, AGNT-02, AGNT-06)
 - [x] 02-02-PLAN.md — LLM factory with OpenAI + Ollama providers, Settings extension (AGNT-04)
 - [x] 02-03-PLAN.md — Tool Registry with Protocol handlers, decorator registration, built-in tools (AGNT-05, AGNT-06)
-- [ ] 02-04-PLAN.md — PostgresSaver checkpointer, node wiring to LLM + Tool Registry, lifespan init (AGNT-03)
+- [x] 02-04-PLAN.md — PostgresSaver checkpointer, node wiring to LLM + Tool Registry, lifespan init (AGNT-03)
 
 ### Phase 3: Communication Layer
 **Goal**: External clients can interact with the agent engine via REST endpoints and real-time WebSocket streaming
