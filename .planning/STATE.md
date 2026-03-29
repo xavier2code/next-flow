@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-29T08:02:06.113Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-29T12:07:11.740Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 12
+  completed_plans: 10
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Let agents reliably complete complex tasks through standardized skill and tool interfaces, flexibly connecting to multiple LLMs and external services
-**Current focus:** Phase 03 — communication-layer
+**Current focus:** Phase 04 — memory-system
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 04 (memory-system) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-03-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 8min | 2 tasks | 8 files |
 | Phase 02 P04 | 7min | 2 tasks | 11 files |
 | Phase 03 P02 | 10min | 2 tasks | 10 files |
+| Phase 04 P01 | 8min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Standalone FastAPI test app for WS integration tests to avoid PostgreSQL checkpointer dependency in TestClient lifespan
 - [Phase 03]: WebSocket is server-push-only; client sends messages via REST API, WS receive loop detects disconnect
 - [Phase 03]: Uvicorn native ping/pong for heartbeat instead of application-level heartbeat (per D-10)
+- [Phase 04]: Store factory returns dict with store + store_ctx for async context manager cleanup pattern
+- [Phase 04]: Embedder provider routing mirrors LLM factory pattern: if/elif dispatch by settings.embedding_provider
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T08:02:06.107Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-memory-system/04-CONTEXT.md
+Last session: 2026-03-29T12:07:11.734Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

@@ -35,7 +35,7 @@
 - [ ] **MEM-01**: Short-term memory using Redis (last N messages per conversation)
 - [ ] **MEM-02**: Context injection in Analyze node from short-term memory
 - [ ] **MEM-03**: LangGraph Store integration for cross-thread semantic search (long-term memory)
-- [ ] **MEM-04**: Qdrant/Milvus setup with collection schemas for long-term memory
+- [x] **MEM-04**: Qdrant/Milvus setup with collection schemas for long-term memory
 
 ### MCP Integration
 
@@ -121,7 +121,7 @@
 | MEM-01 | Phase 4 | Pending |
 | MEM-02 | Phase 4 | Pending |
 | MEM-03 | Phase 4 | Pending |
-| MEM-04 | Phase 4 | Pending |
+| MEM-04 | Phase 4 | Complete |
 | MCP-01 | Phase 5 | Pending |
 | MCP-02 | Phase 5 | Pending |
 | MCP-03 | Phase 5 | Pending |
