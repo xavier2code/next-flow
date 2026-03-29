@@ -16,8 +16,8 @@
 
 ### Agent Engine
 
-- [ ] **AGNT-01**: LangGraph StateGraph workflow with Analyze → Plan → Execute → Respond nodes
-- [ ] **AGNT-02**: AgentState TypedDict with messages (add_messages reducer), plan, scratchpad fields
+- [x] **AGNT-01**: LangGraph StateGraph workflow with Analyze → Plan → Execute → Respond nodes
+- [x] **AGNT-02**: AgentState TypedDict with messages (add_messages reducer), plan, scratchpad fields
 - [ ] **AGNT-03**: PostgresSaver checkpointer for conversation state persistence and resumability
 - [x] **AGNT-04**: LLM integration via LangChain with at least OpenAI and Ollama providers
 - [x] **AGNT-05**: Tool Registry skeleton with unified registration interface and built-in tools
@@ -108,8 +108,8 @@
 | AUTH-04 | Phase 1 | Complete |
 | AUTH-05 | Phase 1 | Complete |
 | AUTH-06 | Phase 1 | Complete |
-| AGNT-01 | Phase 2 | Pending |
-| AGNT-02 | Phase 2 | Pending |
+| AGNT-01 | Phase 2 | Complete |
+| AGNT-02 | Phase 2 | Complete |
 | AGNT-03 | Phase 2 | Pending |
 | AGNT-04 | Phase 2 | Complete |
 | AGNT-05 | Phase 2 | Complete |
