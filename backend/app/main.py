@@ -54,6 +54,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.store_ctx = store_result["store_ctx"]
     logger.info("store_initialized")
 
+    # MemoryService initialization
+    from app.services.memory import MemoryService
+
+    memory_service = MemoryService(
+        redis=app.state.redis,
+        store=app.state.store,
+    )
+    app.state.memory_service = memory_service
+
+    # Wire memory_service into both analyze and respond nodes
+    from app.services.agent_engine.nodes.analyze import set_memory_service as set_analyze_memory
+    from app.services.agent_engine.nodes.respond import set_memory_service as set_respond_memory
+
+    set_analyze_memory(memory_service)
+    set_respond_memory(memory_service)
+    logger.info("memory_service_initialized")
+
     # ConnectionManager for WebSocket connections
     app.state.connection_manager = ConnectionManager()
     logger.info("connection_manager_initialized")
