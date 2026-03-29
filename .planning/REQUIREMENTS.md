@@ -26,9 +26,9 @@
 ### Communication
 
 - [ ] **COMM-01**: REST API endpoints for CRUD on conversations, agents, and settings
-- [ ] **COMM-02**: WebSocket endpoint with LangGraph v2 streaming integration
-- [ ] **COMM-03**: Event mapping from LangGraph StreamParts to WebSocket events (thinking, tool_call, tool_result, chunk, done)
-- [ ] **COMM-04**: Connection lifecycle management with heartbeat, cleanup on disconnect
+- [x] **COMM-02**: WebSocket endpoint with LangGraph v2 streaming integration
+- [x] **COMM-03**: Event mapping from LangGraph StreamParts to WebSocket events (thinking, tool_call, tool_result, chunk, done)
+- [x] **COMM-04**: Connection lifecycle management with heartbeat, cleanup on disconnect
 
 ### Memory
 
@@ -115,9 +115,9 @@
 | AGNT-05 | Phase 2 | Complete |
 | AGNT-06 | Phase 2 | Complete |
 | COMM-01 | Phase 3 | Pending |
-| COMM-02 | Phase 3 | Pending |
-| COMM-03 | Phase 3 | Pending |
-| COMM-04 | Phase 3 | Pending |
+| COMM-02 | Phase 3 | Complete |
+| COMM-03 | Phase 3 | Complete |
+| COMM-04 | Phase 3 | Complete |
 | MEM-01 | Phase 4 | Pending |
 | MEM-02 | Phase 4 | Pending |
 | MEM-03 | Phase 4 | Pending |

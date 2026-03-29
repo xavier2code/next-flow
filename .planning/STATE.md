@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-29T00:49:09.407Z"
+status: executing
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-29T06:29:50.731Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Let agents reliably complete complex tasks through standardized skill and tool interfaces, flexibly connecting to multiple LLMs and external services
-**Current focus:** Phase 02 — agent-engine-core
+**Current focus:** Phase 03 — communication-layer
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 03 (communication-layer) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P02 | 4min | 2 tasks | 7 files |
 | Phase 02 P01 | 8min | 2 tasks | 8 files |
 | Phase 02 P04 | 7min | 2 tasks | 11 files |
+| Phase 03 P02 | 10min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase 02]: RemainingSteps managed value verified via graph.channels, not ainvoke() output
 - [Phase 02]: Used InMemorySaver for graph compilation tests (LangGraph validates checkpointer type)
 - [Phase 02]: Added setuptools packages.find config and psycopg[binary] for build/import compatibility
+- [Phase 03]: Standalone FastAPI test app for WS integration tests to avoid PostgreSQL checkpointer dependency in TestClient lifespan
+- [Phase 03]: WebSocket is server-push-only; client sends messages via REST API, WS receive loop detects disconnect
+- [Phase 03]: Uvicorn native ping/pong for heartbeat instead of application-level heartbeat (per D-10)
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T00:49:09.400Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-communication-layer/03-CONTEXT.md
+Last session: 2026-03-29T06:29:50.726Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None
