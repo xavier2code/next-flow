@@ -19,7 +19,7 @@
 - [ ] **AGNT-01**: LangGraph StateGraph workflow with Analyze → Plan → Execute → Respond nodes
 - [ ] **AGNT-02**: AgentState TypedDict with messages (add_messages reducer), plan, scratchpad fields
 - [ ] **AGNT-03**: PostgresSaver checkpointer for conversation state persistence and resumability
-- [ ] **AGNT-04**: LLM integration via LangChain with at least OpenAI and Ollama providers
+- [x] **AGNT-04**: LLM integration via LangChain with at least OpenAI and Ollama providers
 - [x] **AGNT-05**: Tool Registry skeleton with unified registration interface and built-in tools
 - [x] **AGNT-06**: RemainingSteps managed value for graceful recursion limit handling
 
@@ -111,7 +111,7 @@
 | AGNT-01 | Phase 2 | Pending |
 | AGNT-02 | Phase 2 | Pending |
 | AGNT-03 | Phase 2 | Pending |
-| AGNT-04 | Phase 2 | Pending |
+| AGNT-04 | Phase 2 | Complete |
 | AGNT-05 | Phase 2 | Complete |
 | AGNT-06 | Phase 2 | Complete |
 | COMM-01 | Phase 3 | Pending |

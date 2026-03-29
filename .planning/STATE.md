@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-29T00:03:50.748Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-29T00:05:06.992Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 ## Current Position
 
 Phase: 02 (agent-engine-core) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-03-29
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 8min | 2 tasks | 13 files |
 | Phase 01 P03 | 154 | 2 tasks | 15 files |
 | Phase 02 P03 | 2min | 2 tasks | 6 files |
+| Phase 02 P02 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 01]: get_current_user dependency in deps.py alongside get_db and get_redis as shared import point
 - [Phase 02]: Invoke method handles both Protocol objects (with .invoke()) and bare async functions (decorator pattern)
 - [Phase 02]: Last-write-wins for duplicate tool names (no error, silent overwrite)
+- [Phase 02]: Used langchain-ollama>=1.0.0 instead of deprecated langchain-community ChatOllama
+- [Phase 02]: LLM factory get_llm(config) with streaming=True default, provider routing via if/elif chain
 
 ### Pending Todos
 
@@ -87,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T00:03:50.743Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-03-29T00:05:06.980Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
