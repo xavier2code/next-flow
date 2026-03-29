@@ -38,14 +38,12 @@ created: 2026-03-29
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 05-01-01 | 01 | 1 | MCP-01 | unit | `cd backend && python -m pytest tests/test_mcp_client.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-01-02 | 01 | 1 | MCP-01 | unit | `cd backend && python -m pytest tests/test_mcp_client.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-02-01 | 02 | 1 | MCP-02 | unit | `cd backend && python -m pytest tests/test_mcp_manager.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-02-02 | 02 | 1 | MCP-02 | unit | `cd backend && python -m pytest tests/test_mcp_manager.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-03-01 | 03 | 2 | MCP-03 | unit | `cd backend && python -m pytest tests/test_mcp_tool_sync.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-03-02 | 03 | 2 | MCP-05 | unit | `cd backend && python -m pytest tests/test_mcp_tool_sync.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-04-01 | 04 | 2 | MCP-04 | integration | `cd backend && python -m pytest tests/test_mcp_api.py -x -q` | ❌ W0 | ⬜ pending |
-| 05-04-02 | 04 | 2 | MCP-04 | integration | `cd backend && python -m pytest tests/test_mcp_api.py -x -q` | ❌ W0 | ⬜ pending |
+| 05-01-01 | 01 | 1 | MCP-01 | unit | `cd backend && python -m pytest tests/unit/test_tool_registry.py -x -q` | ❌ W0 | ⬜ pending |
+| 05-01-02 | 01 | 1 | MCP-01 | unit | `cd backend && python -m pytest tests/unit/test_mcp_client.py -x -q` | ❌ W0 | ⬜ pending |
+| 05-01-03 | 01 | 1 | MCP-05 | unit | `cd backend && python -m pytest tests/unit/test_mcp_handler.py -x -q` | ❌ W0 | ⬜ pending |
+| 05-02-01 | 02 | 2 | MCP-02, MCP-03 | unit | `cd backend && python -m pytest tests/unit/test_mcp_manager.py -x -q` | ❌ W0 | ⬜ pending |
+| 05-03-01 | 03 | 3 | MCP-04 | unit+integration | `cd backend && python -m pytest tests/unit/test_mcp_client.py tests/unit/test_mcp_manager.py tests/test_mcp_servers.py -x -q` | ❌ W0 | ⬜ pending |
+| 05-03-02 | 03 | 3 | MCP-04 | integration | `cd backend && python -m pytest tests/test_mcp_servers.py -x -q` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,10 +51,11 @@ created: 2026-03-29
 
 ## Wave 0 Requirements
 
-- [ ] `backend/tests/test_mcp_client.py` — stubs for MCP-01 (client connect, transport fallback)
-- [ ] `backend/tests/test_mcp_manager.py` — stubs for MCP-02 (lifecycle, health check, reconnect)
-- [ ] `backend/tests/test_mcp_tool_sync.py` — stubs for MCP-03, MCP-05 (tool discovery, namespaced registration, invocation)
-- [ ] `backend/tests/test_mcp_api.py` — stubs for MCP-04 (CRUD endpoints, async registration)
+- [ ] `backend/tests/unit/test_tool_registry.py` — stubs for unregister method (MCP-01 partial)
+- [ ] `backend/tests/unit/test_mcp_client.py` — stubs for MCP-01 (client connect, transport fallback)
+- [ ] `backend/tests/unit/test_mcp_handler.py` — stubs for MCP-05 (classified errors, timeout)
+- [ ] `backend/tests/unit/test_mcp_manager.py` — stubs for MCP-02, MCP-03 (lifecycle, health check, reconnect, tool sync)
+- [ ] `backend/tests/test_mcp_servers.py` — stubs for MCP-04 (CRUD endpoints, async registration)
 - [ ] `backend/tests/conftest.py` — MCP-specific fixtures (mock MCPClient, mock ClientSession)
 
 *If none: "Existing infrastructure covers all phase requirements."*
