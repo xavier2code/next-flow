@@ -85,7 +85,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — PostgreSQL pgvector upgrade, Store async factory, graph store wiring, Settings embedding config, test scaffold (MEM-04)
-- [ ] 04-02-PLAN.md — Memory service module: ShortTermMemory (Redis sliding window), LongTermMemory (Store interaction), get_embedder factory, unified MemoryService (MEM-01)
+- [x] 04-02-PLAN.md — Memory service module: ShortTermMemory (Redis sliding window), LongTermMemory (Store interaction), get_embedder factory, unified MemoryService (MEM-01)
 - [ ] 04-03-PLAN.md — Analyze node memory injection, Respond node async write-back, MemoryService lifespan wiring (MEM-02, MEM-03)
 
 ### Phase 5: MCP Integration
