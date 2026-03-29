@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
+    # Embedding Configuration (D-22, D-25)
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
+
     # WebSocket
     ws_ping_interval: float = 20.0
     ws_ping_timeout: float = 20.0
