@@ -17,19 +17,20 @@
 - [x] 支持多种 LLM 模型（OpenAI、本地模型等）的灵活接入与切换 — Validated in Phase 2: LLM factory with OpenAI + Ollama providers
 - [x] Agent 引擎：基于 LangGraph 的有状态图工作流（分析→规划→执行→反思→响应） — Validated in Phase 2: StateGraph 4-node pipeline with checkpointer
 - [x] 工具注册中心：统一管理内置工具、技能、MCP 工具 — Validated in Phase 2: Protocol-based Tool Registry with decorator registration
+- [x] REST API CRUD 端点（对话、Agent、设置、消息）+ Envelope 响应格式 + Cursor 分页 — Validated in Phase 3: Communication Layer
+- [x] WebSocket 实时通信，支持 thinking/tool_call/tool_result/chunk/done 事件 — Validated in Phase 3: WebSocket streaming with event mapper, ConnectionManager, Redis pub/sub
 
 ### Active
 
 - [ ] 内置技能（Skill）系统，支持动态加载与热更新
 - [ ] 完整实现 MCP（Model Context Protocol）协议，无缝对接外部工具与服务
-- [ ] 具备短期/长期记忆能力，支持对话上下文与知识库检索
+- [x] 具备短期/长期记忆能力，支持对话上下文与知识库检索 — Validated in Phase 4: Three-layer memory (Redis sliding window + Store semantic search + AgentState), workflow integration
 - [ ] 支持水平扩展与高并发场景
 - [ ] 对话模块：消息展示、输入框、流式响应渲染、思考过程展示
 - [ ] 技能管理模块：技能列表、技能市场、技能配置与启用/禁用
 - [ ] MCP 管理模块：MCP 服务器注册、连接状态监控、工具列表展示
 - [ ] Agent 配置模块：模型选择、提示词编辑、参数调节
 - [ ] 用户系统模块：登录/注册、个人设置、对话历史管理
-- [ ] WebSocket 实时通信，支持 thinking/tool_call/tool_result/chunk/done 事件
 
 ### Out of Scope
 
@@ -83,7 +84,7 @@
 | Zustand 状态管理 | 轻量级，API 简洁，适合中等复杂度应用 | — Pending |
 | MCP 协议集成 | 标准化工具协议，生态正在快速扩展，避免自建工具协议的维护成本 | — Pending |
 | Qdrant/Milvus 向量数据库 | 高性能向量检索，支持长期记忆的语义搜索 | — Pending |
-| 三层记忆架构 | 短期（Redis）+ 长期（向量库）+ 工作记忆（AgentState），平衡性能与上下文完整性 | — Pending |
+| 三层记忆架构 | 短期（Redis）+ 长期（向量库）+ 工作记忆（AgentState），平衡性能与上下文完整性 | — Validated: ShortTermMemory + LongTermMemory + MemoryService (Phase 4) |
 
 ## Evolution
 
@@ -103,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after Phase 2 completion*
+*Last updated: 2026-03-29 after Phase 4 completion*
