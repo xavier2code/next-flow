@@ -98,11 +98,12 @@ Plans:
   3. Tools from registered MCP servers are discovered via tools/list and registered in the Tool Registry with namespaced identifiers (mcp__server__tool)
   4. Admin API allows registering new MCP servers and monitoring their connection status
   5. Agent can invoke an MCP-discovered tool through the Tool Registry and receive a valid result
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — MCPClient with transport auto-fallback, MCPToolHandler with classified errors, ToolRegistry.unregister (MCP-01, MCP-05)
+- [ ] 05-02-PLAN.md — MCPManager with server lifecycle, health monitoring, exponential backoff reconnect, tool discovery and sync (MCP-02, MCP-03)
+- [ ] 05-03-PLAN.md — Admin API CRUD endpoints, MCPServerService, Pydantic schemas, main.py lifespan wiring (MCP-04)
 
 ### Phase 6: Skill System
 **Goal**: Users can upload, manage, and execute skills in isolated sandboxes with tools registered in the unified Tool Registry
@@ -150,6 +151,6 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 | 2. Agent Engine Core | 4/4 | Complete | 2026-03-29 |
 | 3. Communication Layer | 2/2 | Complete | 2026-03-29 |
 | 4. Memory System | 0/3 | Planning | - |
-| 5. MCP Integration | 0/2 | Not started | - |
+| 5. MCP Integration | 0/3 | Planning | - |
 | 6. Skill System | 0/2 | Not started | - |
 | 7. Frontend | 0/3 | Not started | - |
