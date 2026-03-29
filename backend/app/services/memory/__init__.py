@@ -5,17 +5,8 @@ methods, never Redis or Store directly.
 """
 
 from app.services.memory.embedder import get_embedder
+from app.services.memory.long_term import LongTermMemory
+from app.services.memory.service import MemoryService
 from app.services.memory.short_term import ShortTermMemory
-
-# Task 2 will add long_term.py and service.py; use try/except for now
-try:
-    from app.services.memory.long_term import LongTermMemory  # noqa: F401
-except ImportError:
-    pass
-
-try:
-    from app.services.memory.service import MemoryService  # noqa: F401
-except ImportError:
-    pass
 
 __all__ = ["MemoryService", "ShortTermMemory", "LongTermMemory", "get_embedder"]

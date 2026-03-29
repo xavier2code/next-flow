@@ -31,12 +31,12 @@ async def test_short_term_add_and_retrieve(test_redis):
     except ImportError:
         pytest.skip("ShortTermMemory not yet implemented (Plan 02)")
 
-    memory = ShortTermMemory(redis=test_redis, conversation_id="test-conv-1")
-    await memory.add_message(role="user", content="Hello, world!")
+    memory = ShortTermMemory(redis=test_redis)
+    await memory.add_message(thread_id="test-conv-1", role="user", content="Hello, world!")
 
-    context = await memory.get_context()
-    assert len(context) >= 1
-    assert any("Hello, world!" in msg.get("content", "") for msg in context)
+    context = await memory.get_context(thread_id="test-conv-1")
+    assert len(context["messages"]) >= 1
+    assert any("Hello, world!" in msg.get("content", "") for msg in context["messages"])
 
 
 @pytest.mark.asyncio
@@ -50,16 +50,15 @@ async def test_sliding_window_trim(test_redis):
     window_size = 5
     memory = ShortTermMemory(
         redis=test_redis,
-        conversation_id="test-conv-trim",
         window_size=window_size,
     )
 
     # Add more messages than the window allows
     for i in range(10):
-        await memory.add_message(role="user", content=f"Message {i}")
+        await memory.add_message(thread_id="test-conv-trim", role="user", content=f"Message {i}")
 
-    context = await memory.get_context()
-    assert len(context) <= window_size
+    context = await memory.get_context(thread_id="test-conv-trim")
+    assert len(context["messages"]) <= window_size
 
 
 @pytest.mark.asyncio
@@ -75,16 +74,15 @@ async def test_summary_compression(test_redis):
 
     memory = ShortTermMemory(
         redis=test_redis,
-        conversation_id="test-conv-summary",
         summary_threshold=3,
     )
 
-    with patch.object(memory, "_get_llm", return_value=mock_llm):
+    with patch("app.services.memory.short_term.get_llm", return_value=mock_llm):
         for i in range(5):
-            await memory.add_message(role="user", content=f"Message {i}")
+            await memory.add_message(thread_id="test-conv-summary", role="user", content=f"Message {i}")
 
-    # After exceeding threshold, a summary should exist
-    summary_key = f"memory:summary:test-conv-summary"
+    # After exceeding threshold, a summary key should exist (or at least no errors)
+    summary_key = "nextflow:memory:short:test-conv-summary:summary"
     summary = await test_redis.get(summary_key)
     # Summary may or may not be populated depending on implementation details,
     # but the mechanism must not raise errors.
@@ -101,17 +99,16 @@ async def test_ttl_refresh(test_redis):
 
     memory = ShortTermMemory(
         redis=test_redis,
-        conversation_id="test-conv-ttl",
-        ttl_seconds=300,
+        ttl=300,
     )
 
-    await memory.add_message(role="user", content="First message")
-    ttl_first = await test_redis.ttl(f"memory:test-conv-ttl")
+    await memory.add_message(thread_id="test-conv-ttl", role="user", content="First message")
+    ttl_first = await test_redis.ttl("nextflow:memory:short:test-conv-ttl")
 
     await asyncio.sleep(0.1)
 
-    await memory.add_message(role="user", content="Second message")
-    ttl_second = await test_redis.ttl(f"memory:test-conv-ttl")
+    await memory.add_message(thread_id="test-conv-ttl", role="user", content="Second message")
+    ttl_second = await test_redis.ttl("nextflow:memory:short:test-conv-ttl")
 
     # TTL should have been refreshed (second TTL >= first TTL)
     assert ttl_second >= ttl_first
