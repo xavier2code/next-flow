@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
+    # WebSocket
+    ws_ping_interval: float = 20.0
+    ws_ping_timeout: float = 20.0
+    redis_pubsub_prefix: str = "nextflow:ws:events"
+
     # App
     debug: bool = False
     log_level: str = "INFO"

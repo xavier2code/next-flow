@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 
+import asyncio
+
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from app.api.v1.router import router as v1_router
+from app.api.ws.chat import router as ws_router, start_pubsub_listener
+from app.api.ws.connection_manager import ConnectionManager
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging import setup_logging, get_logger
@@ -42,9 +46,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.checkpointer = await create_checkpointer(settings.database_url)
     logger.info("checkpointer_initialized")
 
+    # ConnectionManager for WebSocket connections
+    app.state.connection_manager = ConnectionManager()
+    logger.info("connection_manager_initialized")
+
+    # Redis pub/sub listener for cross-worker WebSocket broadcasting
+    pubsub_task = asyncio.create_task(
+        start_pubsub_listener(
+            app.state.redis,
+            app.state.connection_manager,
+            settings.redis_pubsub_prefix,
+        )
+    )
+    app.state.pubsub_task = pubsub_task
+    logger.info("pubsub_listener_started")
+
     yield
 
     logger.info("shutting_down_application")
+
+    # Cancel pub/sub listener
+    app.state.pubsub_task.cancel()
+    try:
+        await app.state.pubsub_task
+    except asyncio.CancelledError:
+        pass
+
     await app.state.redis.close()
     await engine.dispose()
 
@@ -107,3 +134,7 @@ async def global_exception_handler(
 
 
 app.include_router(v1_router)
+app.include_router(ws_router)
+
+# NOTE: Uvicorn WebSocket ping/pong is configured at the server level.
+# Run with: uvicorn app.main:app --ws-ping-interval 20 --ws-ping-timeout 20
