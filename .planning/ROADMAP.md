@@ -66,11 +66,11 @@ Plans:
   2. WebSocket endpoint accepts connections and streams LangGraph execution events to connected clients
   3. Streamed events are mapped to typed WebSocket events (thinking, tool_call, tool_result, chunk, done)
   4. WebSocket connections are cleaned up on disconnect with heartbeat-based liveness detection
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — REST API CRUD for conversations, agents, settings, messages with cursor pagination and envelope format (COMM-01)
+- [ ] 03-02-PLAN.md — WebSocket streaming with event mapper, ConnectionManager, Redis pub/sub, and connection lifecycle (COMM-02, COMM-03, COMM-04)
 
 ### Phase 4: Memory System
 **Goal**: Agents retain conversation context across turns and can recall relevant information from long-term semantic memory
@@ -146,8 +146,8 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 3/3 | Complete | 2026-03-28 |
-| 2. Agent Engine Core | 0/4 | Planning | - |
-| 3. Communication Layer | 0/2 | Not started | - |
+| 2. Agent Engine Core | 4/4 | Complete | 2026-03-29 |
+| 3. Communication Layer | 0/2 | Planning | - |
 | 4. Memory System | 0/2 | Not started | - |
 | 5. MCP Integration | 0/2 | Not started | - |
 | 6. Skill System | 0/2 | Not started | - |
