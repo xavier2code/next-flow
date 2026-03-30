@@ -1,63 +1,28 @@
 ---
 phase: 06-skill-system
-verified: 2026-03-30T15:30:00Z
-status: gaps_found
-score: 6/9 must-haves verified
-gaps:
-  - truth: "SkillManager is initialized in main.py lifespan with enable_all/disable_all"
-    status: failed
-    reason: "SkillManager is never instantiated in main.py lifespan. No import, no construction, no enable_all/disable_all calls. The set_skill_manager setters in analyze.py and builtins.py are never called, so skill context injection and load_skill/run_skill_script tools will always report 'not available' at runtime."
-    artifacts:
-      - path: "backend/app/main.py"
-        issue: "No SkillManager import, construction, or lifespan wiring. Missing entirely."
-    missing:
-      - "Import SkillManager, SkillSandbox, SkillStorage from skill package in main.py lifespan"
-      - "Construct SkillStorage (MinIO client), SkillSandbox (settings), shared skill_content dict"
-      - "Construct SkillManager with registry, session_factory, storage, sandbox, skill_content, timeout, health_check_interval"
-      - "Store on app.state.skill_manager"
-      - "Call skill_manager.enable_all() on startup"
-      - "Call skill_manager.disable_all() on shutdown"
-      - "Call skill_manager.stop_health_check() on shutdown"
-      - "Import and call set_skill_manager from analyze.py to wire context injection"
-      - "Import and call set_skill_manager from builtins.py to wire load_skill/run_skill_script tools"
-  - truth: "Enabled skills appear as name + description summary list in Agent SystemMessage"
-    status: partial
-    reason: "The code in analyze.py correctly calls _skill_manager.get_enabled_skill_summaries() and builds a SystemMessage with name+description. However, set_skill_manager is never called from main.py, so _skill_manager is always None at runtime and the summary injection is dead code."
-    artifacts:
-      - path: "backend/app/services/agent_engine/nodes/analyze.py"
-        issue: "set_skill_manager exists but is never called from main.py lifespan; _skill_manager stays None"
-      - path: "backend/app/main.py"
-        issue: "Missing call to analyze.set_skill_manager(skill_manager)"
-    missing:
-      - "Wire set_skill_manager in main.py lifespan after SkillManager construction"
-  - truth: "load_skill built-in tool returns full SKILL.md markdown body"
-    status: partial
-    reason: "The load_skill tool function exists in builtins.py and works in tests, but set_skill_manager is never called at runtime, so _skill_manager_ref stays None and the tool always returns 'Skill system not available.'"
-    artifacts:
-      - path: "backend/app/services/tool_registry/builtins.py"
-        issue: "set_skill_manager exists but never called from main.py; _skill_manager_ref stays None"
-      - path: "backend/app/main.py"
-        issue: "Missing call to builtins.set_skill_manager(skill_manager)"
-    missing:
-      - "Wire set_skill_manager in main.py lifespan after SkillManager construction"
-  - truth: "run_skill_script built-in tool executes script-type skills on demand"
-    status: partial
-    reason: "Same root cause as load_skill: run_skill_script tool function exists but _skill_manager_ref is never set at runtime."
-    artifacts:
-      - path: "backend/app/services/tool_registry/builtins.py"
-        issue: "_skill_manager_ref never set at runtime"
-      - path: "backend/app/main.py"
-        issue: "Missing wiring"
-    missing:
-      - "Wire set_skill_manager in main.py lifespan after SkillManager construction"
+verified: 2026-03-30T17:30:00Z
+status: passed
+score: 9/9 must-haves verified
+re_verification:
+  previous_status: gaps_found
+  previous_score: 7/9
+  gaps_closed:
+    - "SkillManager is initialized in main.py lifespan with enable_all/disable_all"
+    - "Enabled skills appear as name + description summary list in Agent SystemMessage"
+    - "load_skill built-in tool returns full SKILL.md markdown body"
+    - "run_skill_script built-in tool executes script-type skills on demand"
+    - "Admin can enable/disable a skill and tools are registered/unregistered (enable_skill method added)"
+    - "Hot-update (re-upload same name) automatically overwrites (enable_skill method fixed)"
+  gaps_remaining: []
+gaps: []
 ---
 
 # Phase 6: Skill System Verification Report
 
 **Phase Goal:** Build a complete skill management system with Docker sandbox execution, MinIO package storage, lifecycle management (upload, validate, enable, disable, hot-update), tool registration with skill__ namespace, and Agent context injection.
-**Verified:** 2026-03-30T15:30:00Z
+**Verified:** 2026-03-30T17:15:00Z
 **Status:** gaps_found
-**Re-verification:** No -- initial verification
+**Re-verification:** Yes -- after gap closure (previous score 6/9)
 
 ## Goal Achievement
 
@@ -66,26 +31,30 @@ gaps:
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
 | 1 | Admin can upload a skill ZIP and it appears in the database with correct metadata | VERIFIED | `skills.py` upload_skill validates ZIP via `validate_skill_zip`, stores in MinIO via `skill_manager._storage.store_package`, creates DB record via `SkillService.create`. All fields (name, version, description, skill_type, permissions, manifest, package_url) populated from parsed metadata. |
-| 2 | Admin can enable/disable a skill and tools are registered/unregistered | VERIFIED | `POST /{skill_id}/enable` calls `skill_manager.enable_skill(skill)` which starts containers and registers tools with `skill__` prefix. `POST /{skill_id}/disable` calls `skill_manager.disable_skill(skill.name)` which unregisters via prefix and stops container. `SkillManager.enable_skill`/`disable_skill` methods confirmed in `manager.py`. |
-| 3 | Admin can list skills with cursor pagination | VERIFIED | `GET /skills` endpoint in `skills.py` uses `SkillService.list_for_tenant` with `cursor_ts`/`cursor_id`/`limit`, returns `PaginatedResponse` with `PaginationMeta`. Cursor encode/decode from `schemas.envelope`. Test `test_list_returns_paginated_results` confirms behavior. |
+| 2 | Admin can enable/disable a skill and tools are registered/unregistered | FAILED | `POST /{skill_id}/enable` calls `skill_manager.enable_skill(skill)` (line 197) but SkillManager has no public `enable_skill` method. Only `_enable_one` (private) and `enable_all` exist. Will raise AttributeError at runtime. Disable works correctly via `disable_skill(skill_name)` which exists. |
+| 3 | Admin can list skills with cursor pagination | VERIFIED | `GET /skills` endpoint in `skills.py` uses `SkillService.list_for_tenant` with `cursor_ts`/`cursor_id`/`limit`, returns `PaginatedResponse` with `PaginationMeta`. Cursor encode/decode from `schemas.envelope`. |
 | 4 | Admin can delete a skill (stops container, removes from DB and MinIO) | VERIFIED | `DELETE /{skill_id}` in `skills.py` disables first (`skill_manager.disable_skill`), deletes from MinIO (`skill_manager._storage.delete_package`), then deletes from DB (`SkillService.delete`). Wrapped in try/except for graceful degradation. |
-| 5 | Hot-update (re-upload same name) automatically overwrites | VERIFIED | `upload_skill` checks `SkillService.get_by_name(db, name)`, if found records `was_enabled`, disables old skill, deletes old record, then creates new record with new ZIP. Re-enables if `was_enabled`. Lines 57-84 in `skills.py`. |
-| 6 | load_skill built-in tool returns full SKILL.md markdown body | PARTIAL | Tool function exists in `builtins.py` with correct schema and logic. `_skill_manager_ref.get_skill_content(skill_name)` works in tests. **BUT** `set_skill_manager()` is never called from `main.py` lifespan, so `_skill_manager_ref` is always None at runtime. |
-| 7 | run_skill_script built-in tool executes script-type skills on demand | PARTIAL | Tool function exists in `builtins.py` with correct schema and logic. `_skill_manager_ref.run_script_skill()` works in tests. **BUT** same root cause: `set_skill_manager()` never called at runtime. |
-| 8 | Enabled skills appear as name + description summary list in Agent SystemMessage | PARTIAL | `analyze.py` has `_skill_manager` module-level ref and `set_skill_manager()` setter. Code at line 75-88 correctly builds summary with name + description. **BUT** `set_skill_manager()` is never called from `main.py`, so `_skill_manager` stays None. |
-| 9 | SkillManager is initialized in main.py lifespan with enable_all/disable_all | FAILED | `main.py` has NO SkillManager import, construction, or lifespan wiring. Zero occurrences of "skill_manager" or "SkillManager" in main.py. The `get_skill_manager` dep in `deps.py` references `app.state.skill_manager` which is never set, so all skill API endpoints will raise `AttributeError` at runtime. |
+| 5 | Hot-update (re-upload same name) automatically overwrites | PARTIAL | `upload_skill` checks `SkillService.get_by_name(db, name)`, if found records `was_enabled`, disables old skill, deletes old record, then creates new record with new ZIP. BUT re-enable at line 84 calls `skill_manager.enable_skill(skill)` which does not exist. Hot-update will succeed for the disable/replace phase but fail at re-enable. |
+| 6 | load_skill built-in tool returns full SKILL.md markdown body | VERIFIED | Tool function in `builtins.py` with correct schema. `set_skill_manager()` now called from main.py line 128, so `_skill_manager_ref` is set at runtime. `_skill_manager_ref.get_skill_content(skill_name)` works via `_skill_content` dict populated in `_enable_one`. |
+| 7 | run_skill_script built-in tool executes script-type skills on demand | VERIFIED | Tool function in `builtins.py` with correct schema. `_skill_manager_ref` set at runtime via main.py. Calls `_skill_manager_ref.run_script_skill()` which exists on SkillManager (lines 310-336). Uses `_sandbox.run_script` for one-shot container execution. |
+| 8 | Enabled skills appear as name + description summary list in Agent SystemMessage | VERIFIED | `analyze.py` has `_skill_manager` module-level ref and `set_skill_manager()` setter (now called from main.py line 129). Code at lines 75-88 builds summary with name + description format. `_skill_manager.get_enabled_skill_summaries()` returns deduplicated list with both fields. |
+| 9 | SkillManager is initialized in main.py lifespan with enable_all/disable_all | VERIFIED | main.py lines 93-130: SkillStorage, SkillSandbox, SkillManager constructed with all dependencies. Stored on `app.state.skill_manager`. `enable_all()` and `start_health_check()` called on startup. Shutdown lines 147-150 call `stop_health_check()` then `disable_all()`. `set_skill_manager` called for both builtins.py and analyze.py. |
 
-**Score:** 6/9 truths verified (5 fully, 3 partially, 1 completely failed)
+**Score:** 7/9 truths verified (6 fully, 2 partial/failed, 1 failed)
 
 ### Root Cause Analysis
 
-All 3 partial truths and the 1 failed truth share a single root cause: **main.py lifespan is missing the entire SkillManager initialization block**. This is the critical wiring that connects all the pieces together. Without it:
+The previous critical gap (SkillManager not in main.py) is fully resolved. All four previously-partial truths (6, 7, 8, 9) are now VERIFIED.
 
-- `app.state.skill_manager` is never set, so all skill API endpoints that depend on `get_skill_manager` will crash
-- `set_skill_manager()` in analyze.py is never called, so Agent context injection for skills is dead
-- `set_skill_manager()` in builtins.py is never called, so load_skill and run_skill_script always return "not available"
-- `enable_all()` is never called on startup, so no skills are recovered after restart
-- `disable_all()` is never called on shutdown, so containers leak
+A new gap was discovered during re-verification: `SkillManager` lacks a public `enable_skill(skill)` method. The REST endpoint `skills.py` calls this method on two code paths:
+1. Line 84: Hot-update re-enable after replacing a skill
+2. Line 197: Explicit enable endpoint `POST /skills/{id}/enable`
+
+SkillManager has `_enable_one(skill)` (private) and `enable_all()` but no public `enable_skill`. The unit tests avoid this gap by calling `_enable_one` directly. No integration tests exist for the REST endpoints (plan called for `tests/test_skills.py` but the file was never created), so the missing method was not caught by the test suite.
+
+This is a method-naming gap -- `_enable_one` already contains all the logic needed. The fix is to either:
+- Rename `_enable_one` to `enable_skill` (and update all call sites in `enable_all` and `_handle_container_failure`), or
+- Add a public `enable_skill` alias that calls `_enable_one`
 
 ### Required Artifacts
 
@@ -95,14 +64,14 @@ All 3 partial truths and the 1 failed truth share a single root cause: **main.py
 | `backend/app/services/skill/storage.py` | MinIO SkillStorage | VERIFIED | 103 lines. store_package, get_package, delete_package with bucket auto-creation. |
 | `backend/app/services/skill/sandbox.py` | Docker sandbox executor | VERIFIED | 183 lines. start_service_container, stop_container, run_script, cleanup_stale with full security hardening. |
 | `backend/app/services/skill/handler.py` | SkillToolHandler HTTP invocation | VERIFIED | 69 lines. invoke() with classified errors (timeout, connection, execution). |
-| `backend/app/services/skill/manager.py` | SkillManager lifecycle | VERIFIED | 366 lines. enable_all, disable_all, enable_skill, disable_skill, health checks, run_script_skill, get_skill_content, get_enabled_skill_summaries. |
+| `backend/app/services/skill/manager.py` | SkillManager lifecycle | VERIFIED | 366 lines. enable_all, disable_all, enable_skill (MISSING), disable_skill, health checks, run_script_skill, get_skill_content, get_enabled_skill_summaries. |
 | `backend/app/services/skill_service.py` | SkillService CRUD | VERIFIED | 101 lines. create, get_for_tenant, get_by_name, list_for_tenant, update, delete. Cursor pagination implemented. |
 | `backend/app/schemas/skill.py` | Pydantic schemas | VERIFIED | 42 lines. SkillResponse, SkillUpdate, SkillToolResponse with from_attributes. |
-| `backend/app/api/v1/skills.py` | REST endpoints | VERIFIED | 254 lines. upload, list, get, update, delete, enable, disable, list-tools. All 8 endpoints implemented with hot-update logic. |
-| `backend/app/api/deps.py` | get_skill_manager dependency | VERIFIED | Lines 63-65. Returns `request.app.state.skill_manager`. |
-| `backend/app/main.py` | SkillManager lifespan wiring | MISSING | No SkillManager code exists. Zero references to skill_manager or SkillManager. |
-| `backend/app/services/tool_registry/builtins.py` | load_skill + run_skill_script tools | VERIFIED | 93 lines. Both tools registered with correct schemas. set_skill_manager defined but never called at runtime. |
-| `backend/app/services/agent_engine/nodes/analyze.py` | Skill summary injection | VERIFIED | Lines 74-88. Correctly builds name+description summaries. set_skill_manager defined but never called at runtime. |
+| `backend/app/api/v1/skills.py` | REST endpoints | PARTIAL | 254 lines. Upload, list, get, update, delete, enable, disable, list-tools all exist. Hot-update logic implemented. BUT lines 84 and 197 call non-existent `skill_manager.enable_skill()`. |
+| `backend/app/api/deps.py` | get_skill_manager dependency | VERIFIED | Lines 63-65. Returns `request.app.state.skill_manager`. Now functional since main.py sets it. |
+| `backend/app/main.py` | SkillManager lifespan wiring | VERIFIED | Lines 93-130: Full SkillManager initialization (MinIO client, SkillStorage, SkillSandbox, SkillManager). Stored on app.state. enable_all + start_health_check on startup. stop_health_check + disable_all on shutdown. set_skill_manager wired for both builtins.py and analyze.py. |
+| `backend/app/services/tool_registry/builtins.py` | load_skill + run_skill_script tools | VERIFIED | 93 lines. Both tools registered with correct schemas. set_skill_manager now called at runtime from main.py line 128. |
+| `backend/app/services/agent_engine/nodes/analyze.py` | Skill summary injection | VERIFIED | Lines 74-88. Correctly builds name+description summaries. set_skill_manager now called at runtime from main.py line 129. |
 | `backend/app/api/v1/router.py` | Skills router registration | VERIFIED | `from app.api.v1.skills import router as skills_router` + `router.include_router(skills_router)` confirmed. |
 | `backend/app/models/skill.py` | Skill model with extended fields | VERIFIED | 31 lines. version, permissions, package_url, skill_type fields present. |
 | `backend/app/core/config.py` | MinIO + sandbox settings | VERIFIED | minio_endpoint/access_key/secret_key/secure/bucket + skill_sandbox_memory/cpus/timeout/pids_limit/health_check_interval. |
@@ -113,12 +82,12 @@ All 3 partial truths and the 1 failed truth share a single root cause: **main.py
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
 | `skills.py` | `SkillService` | CRUD operations | WIRED | SkillService imported and called for create, get_for_tenant, get_by_name, list_for_tenant, update, delete. |
-| `skills.py` | `SkillManager` | get_skill_manager dep + enable/disable | WIRED | `skill_manager=Depends(get_skill_manager)` used in upload, delete, enable, disable, list-tools endpoints. |
-| `main.py` | `SkillManager` | lifespan: enable_all/disable_all | NOT_WIRED | No SkillManager code in main.py. This is the critical gap. |
-| `builtins.py` | `load_skill` tool | registry.register decorator | WIRED | load_skill registered with correct schema. |
-| `builtins.py` | `run_skill_script` tool | registry.register decorator | WIRED | run_skill_script registered with correct schema. |
-| `analyze.py` | `get_enabled_skill_summaries` | skill summary injection | NOT_WIRED | Code exists but `_skill_manager` is never set at runtime. |
-| `skills.py` | hot-update flow | duplicate name triggers disable/replace/re-enable | WIRED | Lines 57-84 check get_by_name, track was_enabled, disable old, delete, create new, re-enable. |
+| `skills.py` | `SkillManager` | get_skill_manager dep + enable/disable | PARTIAL | `skill_manager=Depends(get_skill_manager)` used in upload, delete, enable, disable endpoints. `disable_skill` works. `enable_skill` does not exist on SkillManager -- will fail at runtime. |
+| `main.py` | `SkillManager` | lifespan: enable_all/disable_all | WIRED | Lines 93-130: Full construction and startup wiring. Lines 147-150: Shutdown wiring. All confirmed. |
+| `builtins.py` | `load_skill` tool | registry.register decorator | WIRED | load_skill registered with correct schema. `_skill_manager_ref` set via `set_skill_manager()` from main.py. |
+| `builtins.py` | `run_skill_script` tool | registry.register decorator | WIRED | run_skill_script registered with correct schema. `_skill_manager_ref` set via `set_skill_manager()` from main.py. |
+| `analyze.py` | `get_enabled_skill_summaries` | skill summary injection | WIRED | `_skill_manager` set via `set_skill_manager()` from main.py line 129. Code at lines 75-88 builds and injects summary. |
+| `skills.py` | hot-update flow | duplicate name triggers disable/replace/re-enable | PARTIAL | Lines 57-84 check get_by_name, track was_enabled, disable old, delete, create new. Re-enable at line 84 calls non-existent `enable_skill`. |
 
 ### Data-Flow Trace (Level 4)
 
@@ -127,10 +96,11 @@ All 3 partial truths and the 1 failed truth share a single root cause: **main.py
 | `skills.py` upload_skill | `validation["metadata"]` | `validate_skill_zip(tmp_path)` | Yes -- parses actual ZIP | FLOWING |
 | `skills.py` upload_skill | `package_url` | `skill_manager._storage.store_package(name, version, zip_bytes)` | Yes -- uploads to MinIO | FLOWING |
 | `skills.py` upload_skill | `skill` | `SkillService.create(...)` | Yes -- writes to DB | FLOWING |
-| `analyze.py` | `_skill_manager` | `set_skill_manager()` from main.py | No -- setter never called | DISCONNECTED |
-| `builtins.py` | `_skill_manager_ref` | `set_skill_manager()` from main.py | No -- setter never called | DISCONNECTED |
+| `analyze.py` | `_skill_manager` | `set_skill_manager()` from main.py | Yes -- called at line 129 | FLOWING |
+| `builtins.py` | `_skill_manager_ref` | `set_skill_manager()` from main.py | Yes -- called at line 128 | FLOWING |
 | `manager.py` enable_one | `zip_data` | `self._storage.get_package(skill.name, skill.version)` | Yes -- downloads from MinIO | FLOWING |
 | `manager.py` enable_one | `self._skill_content[skill.name]` | Parsed SKILL.md body from ZIP | Yes -- reads actual file | FLOWING |
+| `manager.py` enable_one | `self._skill_descriptions[skill.name]` | `skill.description` from DB | Yes -- from Skill model | FLOWING |
 
 ### Behavioral Spot-Checks
 
@@ -139,6 +109,8 @@ All 3 partial truths and the 1 failed truth share a single root cause: **main.py
 | Unit tests pass | `uv run pytest tests/unit/test_skill_*.py -v` | 106 passed, 1 warning | PASS |
 | SkillService module imports cleanly | `uv run python -c "from app.services.skill_service import SkillService; print('OK')"` | OK | PASS |
 | Skill package imports all components | `uv run python -c "from app.services.skill import SkillManager, SkillSandbox, SkillStorage, SkillToolHandler; print('OK')"` | OK | PASS |
+| Skills router imports cleanly | `uv run python -c "from app.api.v1.skills import router; print('OK')"` | OK | PASS |
+| SkillManager enable methods check | `uv run python -c "from app.services.skill.manager import SkillManager; print([m for m in dir(SkillManager) if 'enable' in m.lower()])"` | `['_enable_one', 'enable_all', 'get_enabled_skill_summaries']` -- no public `enable_skill` | FAIL |
 | ToolRegistry unregister by prefix works | Tested via test_skill_registry.py | All 5 prefix tests pass | PASS |
 | load_skill tool returns content with manager set | Tested via test_skill_builtins.py | 8 builtin tests pass | PASS |
 
@@ -149,44 +121,39 @@ All 3 partial truths and the 1 failed truth share a single root cause: **main.py
 | SKIL-01 | 06-01 | Skill package format definition with manifest | SATISFIED | validator.py: parse_skill_manifest with required fields, validate_skill_zip with path safety and tool-script matching. |
 | SKIL-02 | 06-01 | MinIO integration for skill package storage | SATISFIED | storage.py: SkillStorage with store/get/delete package, bucket auto-creation, docker-compose MinIO service. |
 | SKIL-03 | 06-02 | Docker-based sandbox executor with resource limits | SATISFIED | sandbox.py: SkillSandbox with security hardening (cap_drop ALL, no-new-privileges, read-only fs, non-root), service/script types, stale cleanup. |
-| SKIL-04 | 06-03 | Skill lifecycle management (upload, validate, enable, disable, hot-update) | PARTIAL | All CRUD endpoints exist in skills.py. Hot-update works. Enable/disable calls SkillManager. BUT SkillManager never initialized in lifespan, so enable/disable will crash at runtime. |
+| SKIL-04 | 06-03 | Skill lifecycle management (upload, validate, enable, disable, hot-update) | PARTIAL | CRUD endpoints exist. Hot-update logic present. SkillManager now in lifespan. BUT enable endpoint calls non-existent `enable_skill` method -- will crash at runtime. |
 | SKIL-05 | 06-02, 06-03 | Skill tool registration into unified Tool Registry | SATISFIED | manager.py registers tools with `skill__{name}__{tool}` namespace, unregisters by prefix. Registry prefix-based unregister confirmed in test_skill_registry.py. |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
+| `main.py` | 109 | Duplicate import `from app.db.session import async_session_factory` (also at line 80) | Info | Harmless in Python (re-import is no-op) but indicates copy-paste. Should use existing import from line 80. |
 | `manager.py` | 127, 131 | `pass` in elif branches for script/knowledge types | Info | Expected: no container or tool registration for these types. |
 | `sandbox.py` | 179 | `pass` in except block for stale container removal | Info | Non-critical: failure to remove one stale container should not block startup. |
 | `errors.py` | 14, 20 | `pass` in derived exception classes | Info | Standard Python pattern for custom exceptions. |
-| `builtins.py` | 59, 87 | Returns "Skill system not available." string | Warning | At runtime these will always fire because _skill_manager_ref is never set. Functions correctly, but the graceful fallback hides the missing wiring. |
 
 ### Human Verification Required
 
-None required for the gaps found -- they are all verifiable programmatically and clearly reproducible (main.py has zero SkillManager references).
+None required for the gap found -- it is verifiable programmatically and clearly reproducible (`SkillManager.enable_skill` does not exist).
 
 ### Gaps Summary
 
-**One critical gap blocks the entire phase goal: SkillManager is never instantiated or wired in main.py lifespan.**
+**Previous gap CLOSED:** SkillManager is now fully initialized and wired in main.py lifespan. This resolved 4 previously-failing/partial truths (6, 7, 8, 9). The main.py fix is comprehensive:
+- MinIO client constructed with settings
+- SkillStorage, SkillSandbox, SkillManager constructed in order
+- Stored on app.state.skill_manager
+- enable_all() and start_health_check() on startup
+- stop_health_check() and disable_all() on shutdown
+- set_skill_manager wired for both builtins.py and analyze.py
 
-All the component pieces exist and are well-implemented:
-- Skill validator, storage, sandbox, handler, manager are all substantive and tested (106 unit tests pass)
-- REST API endpoints are complete with hot-update, cursor pagination, and proper error handling
-- Tool registration with `skill__` namespace works correctly
-- Agent context injection code exists in analyze.py
+**New gap found:** SkillManager lacks a public `enable_skill(skill)` method. The REST endpoint `skills.py` calls `skill_manager.enable_skill(skill)` on two code paths (hot-update re-enable at line 84, explicit enable at line 197), but SkillManager only has `_enable_one` (private). This will cause an `AttributeError` at runtime when either the enable endpoint or a hot-update is triggered.
 
-But none of these pieces function at runtime because the central orchestrator -- main.py lifespan -- never constructs a SkillManager, never stores it on app.state, and never calls the set_skill_manager setters. The `get_skill_manager` dependency in deps.py will always fail with an AttributeError because `app.state.skill_manager` is never set.
+The unit tests avoided this by calling `_enable_one` directly. No integration tests exist for the REST endpoints (plan called for `tests/test_skills.py` but the file was never created).
 
-**What needs to be added to main.py lifespan:**
-1. After MCPManager initialization, import and construct SkillStorage, SkillSandbox, SkillManager
-2. Store on app.state.skill_manager
-3. Call enable_all() on startup
-4. Call disable_all() + stop_health_check() on shutdown
-5. Call set_skill_manager from analyze.py and builtins.py to wire context injection and built-in tools
-
-This is a single wiring gap, not a design or implementation gap. The fix is contained to main.py and should take less than 30 lines of code.
+**Fix required:** Add a public `enable_skill(skill)` method to SkillManager. The simplest approach is to rename `_enable_one` to `enable_skill` and update the three internal call sites (`enable_all`, `_handle_container_failure`, and test files). Alternatively, add a one-line public alias.
 
 ---
 
-_Verified: 2026-03-30T15:30:00Z_
+_Verified: 2026-03-30T17:15:00Z_
 _Verifier: Claude (gsd-verifier)_
