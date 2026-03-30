@@ -132,13 +132,13 @@ Plans:
   4. Thinking process and tool call/result events display as collapsible sections and inline cards during streaming
   5. User can configure agents (model selection, system prompt, temperature) and manage conversation history
   6. User can manage skills (list, enable/disable, upload) and MCP servers (register, view status, list tools)
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 4 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
-- [ ] 07-03: TBD
+- [ ] 07-01-PLAN.md — Project scaffold, shadcn/ui, auth pages, API client, Zustand stores, WebSocket hook, app shell (UI-01, UI-02)
+- [ ] 07-02-PLAN.md — Chat view with streaming messages, Markdown rendering, side panel for thinking/tool events, conversation sidebar (UI-03, UI-04, UI-05, UI-06, UI-08)
+- [ ] 07-03-PLAN.md — Management pages (Agent/Skills/MCP tabs with list+detail), settings page with theme toggle (UI-07, UI-09, UI-10)
+- [ ] 07-04-PLAN.md — Final build verification and user acceptance testing (UI-01 through UI-10)
 
 ## Progress
 
@@ -154,4 +154,4 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 | 4. Memory System | 3/3 | Complete | 2026-03-29 |
 | 5. MCP Integration | 3/3 | Complete | 2026-03-30 |
 | 6. Skill System | 0/3 | Not started | - |
-| 7. Frontend | 0/3 | Not started | - |
+| 7. Frontend | 0/4 | Not started | - |
