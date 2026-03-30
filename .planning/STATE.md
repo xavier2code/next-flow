@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-30T02:23:21.728Z"
+status: in-progress
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-30T05:37:49Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 93
+  total_plans: 18
+  completed_plans: 16
+  percent: 89
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Let agents reliably complete complex tasks through standardized skill and tool interfaces, flexibly connecting to multiple LLMs and external services
-**Current focus:** Phase 05 — mcp-integration
+**Current focus:** Phase 06 -- skill-system
 
 ## Current Position
 
 Phase: 6
-Plan: Not started
-Status: Completed 05-03-PLAN.md
+Plan: 1 of 3 complete
+Status: Completed 06-01-PLAN.md
 Last activity: 2026-03-30
 
-Progress: [█████████░] 93%
+Progress: [████████░░] 89%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [█████████░] 93%
 | Phase 05 P01 | 6min | 3 tasks | 9 files |
 | Phase 05 P02 | 9min | 1 tasks | 4 files |
 | Phase 05 P03 | 5min | 2 tasks | 8 files |
+| Phase 06 P01 | 22min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,10 @@ Recent decisions affecting current work:
 - [Phase 05]: Admin API uses tenant_id (TenantMixin) instead of user_id for multi-tenancy, consistent with Agent model
 - [Phase 05]: list_server_tools reads from app.state.tool_registry at request time for real-time discovery
 - [Phase 05]: MCPManager wired in main.py lifespan: connect_all + start_health_check on startup, stop_health_check + disconnect_all on shutdown
+- [Phase 06]: Unit test conftest overrides session-scoped DB fixture with no-op for pure unit tests
+- [Phase 06]: SkillStorage accepts injected Minio client for testability (not self-constructed)
+- [Phase 06]: Empty tools list treated as no-tools for skill type inference (script not service)
+- [Phase 06]: Alembic migration manually written since DB unavailable in worktree
 
 ### Pending Todos
 
@@ -119,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T02:23:21.720Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-skill-system/06-CONTEXT.md
+Last session: 2026-03-30T05:37:49Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: .planning/phases/06-skill-system/06-01-SUMMARY.md

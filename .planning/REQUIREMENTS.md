@@ -47,8 +47,8 @@
 
 ### Skill System
 
-- [ ] **SKIL-01**: Skill package format definition with manifest (name, description, permissions, tools)
-- [ ] **SKIL-02**: MinIO integration for skill package storage
+- [x] **SKIL-01**: Skill package format definition with manifest (name, description, permissions, tools)
+- [x] **SKIL-02**: MinIO integration for skill package storage
 - [ ] **SKIL-03**: Docker-based sandbox executor with resource limits and timeout enforcement
 - [ ] **SKIL-04**: Skill lifecycle management (upload, validate, enable, disable, hot-update)
 - [ ] **SKIL-05**: Skill tool registration into unified Tool Registry
@@ -127,8 +127,8 @@
 | MCP-03 | Phase 5 | Pending |
 | MCP-04 | Phase 5 | Pending |
 | MCP-05 | Phase 5 | Pending |
-| SKIL-01 | Phase 6 | Pending |
-| SKIL-02 | Phase 6 | Pending |
+| SKIL-01 | Phase 6 | Complete |
+| SKIL-02 | Phase 6 | Complete |
 | SKIL-03 | Phase 6 | Pending |
 | SKIL-04 | Phase 6 | Pending |
 | SKIL-05 | Phase 6 | Pending |
