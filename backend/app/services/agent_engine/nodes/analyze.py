@@ -17,6 +17,7 @@ logger = structlog.get_logger()
 # Same pattern as respond.py -- avoids passing memory_service through graph config.
 # Set via set_memory_service() called from main.py lifespan.
 _memory_service = None
+_skill_manager = None
 
 
 def set_memory_service(service) -> None:
@@ -26,6 +27,12 @@ def set_memory_service(service) -> None:
     """
     global _memory_service
     _memory_service = service
+
+
+def set_skill_manager(manager) -> None:
+    """Set the SkillManager reference for skill context injection."""
+    global _skill_manager
+    _skill_manager = manager
 
 
 async def analyze_node(state: AgentState, *, config: dict | None = None) -> dict:
@@ -63,6 +70,24 @@ async def analyze_node(state: AgentState, *, config: dict | None = None) -> dict
     if config:
         configurable = config.get("configurable", {})
         thread_id = configurable.get("thread_id", None)
+
+    # Inject enabled skill summaries into Agent context (per D-16)
+    if _skill_manager:
+        try:
+            summaries = _skill_manager.get_enabled_skill_summaries()
+            if summaries:
+                summary_text = "可用技能：" + ", ".join(
+                    f"{s['name']}({s['description']})" for s in summaries
+                )
+                context_messages.append(
+                    SystemMessage(content=summary_text)
+                )
+                logger.info(
+                    "skill_summary_injected",
+                    skill_count=len(summaries),
+                )
+        except Exception as e:
+            logger.warning("skill_summary_injection_failed", error=str(e))
 
     if not _memory_service:
         logger.debug("memory_service_not_available")

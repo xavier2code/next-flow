@@ -307,6 +307,34 @@ class SkillManager:
         """Get SKILL.md body for a skill (used by load_skill built-in tool)."""
         return self._skill_content.get(skill_name)
 
+    def run_script_skill(self, skill_name: str, params: dict) -> dict:
+        """Execute a script-type skill on demand (per D-21).
+
+        Starts a one-shot container, runs the script, captures output, destroys container.
+        Called by run_skill_script built-in tool.
+        """
+        extract_path = os.path.join(
+            tempfile.gettempdir(), "nextflow", "skills", skill_name
+        )
+        script_dir = os.path.join(extract_path, "script")
+        if not os.path.exists(script_dir):
+            raise RuntimeError(
+                f"No script directory found for skill '{skill_name}'"
+            )
+        script_files = [f for f in os.listdir(script_dir) if f.endswith(".py")]
+        if not script_files:
+            raise RuntimeError(
+                f"No script files found for skill '{skill_name}'"
+            )
+        tool_file = script_files[0]
+        return self._sandbox.run_script(
+            skill_name=skill_name,
+            extract_path=extract_path,
+            tool_file=tool_file,
+            params=params,
+            timeout=self._timeout,
+        )
+
     def get_enabled_skill_summaries(self) -> list[dict]:
         """Get summary list of enabled skills for Agent context injection.
 

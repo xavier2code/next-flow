@@ -112,3 +112,39 @@ class TestToolRegistry:
         result = await registry.invoke("dup", {"value": 4})
         # Should use handler_b (multiplier=3), not handler_a (multiplier=1)
         assert result == 12
+
+
+class TestToolRegistryUnregister:
+    """Tests for ToolRegistry.unregister(prefix) method."""
+
+    def test_unregister_removes_matching_tools(self):
+        """unregister('mcp__weather__') removes only tools with that prefix."""
+        registry = ToolRegistry()
+        handler = EchoHandler()
+        registry.register("mcp__weather__get_forecast", {"type": "object"}, handler)
+        registry.register("mcp__weather__get_alerts", {"type": "object"}, handler)
+        registry.register("mcp__maps__directions", {"type": "object"}, handler)
+        registry.register("get_current_time", {"type": "object"}, handler)
+
+        removed = registry.unregister("mcp__weather__")
+        assert removed == 2
+        names = [t["name"] for t in registry.list_tools()]
+        assert "mcp__weather__get_forecast" not in names
+        assert "mcp__weather__get_alerts" not in names
+        assert "mcp__maps__directions" in names
+        assert "get_current_time" in names
+
+    def test_unregister_returns_zero_when_no_match(self):
+        """unregister with non-matching prefix returns 0, no tools removed."""
+        registry = ToolRegistry()
+        handler = EchoHandler()
+        registry.register("get_current_time", {"type": "object"}, handler)
+        removed = registry.unregister("mcp__nonexistent__")
+        assert removed == 0
+        assert len(registry.list_tools()) == 1
+
+    def test_unregister_empty_registry(self):
+        """unregister on empty registry returns 0."""
+        registry = ToolRegistry()
+        removed = registry.unregister("mcp__anything__")
+        assert removed == 0

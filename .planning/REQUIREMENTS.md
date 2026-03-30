@@ -39,11 +39,11 @@
 
 ### MCP Integration
 
-- [ ] **MCP-01**: MCP Client implementation supporting Streamable HTTP transport with legacy SSE fallback
-- [ ] **MCP-02**: MCP Manager for server registration, connection lifecycle, and health monitoring
-- [ ] **MCP-03**: MCP tool discovery (tools/list) and registration into unified Tool Registry
-- [ ] **MCP-04**: MCP admin API endpoints for server registration and status monitoring
-- [ ] **MCP-05**: MCP tool invocation via Tool Registry routing (namespaced as mcp__server__tool)
+- [x] **MCP-01**: MCP Client implementation supporting Streamable HTTP transport with legacy SSE fallback
+- [x] **MCP-02**: MCP Manager for server registration, connection lifecycle, and health monitoring
+- [x] **MCP-03**: MCP tool discovery (tools/list) and registration into unified Tool Registry
+- [x] **MCP-04**: MCP admin API endpoints for server registration and status monitoring
+- [x] **MCP-05**: MCP tool invocation via Tool Registry routing (namespaced as mcp__server__tool)
 
 ### Skill System
 
@@ -122,14 +122,14 @@
 | MEM-02 | Phase 4 | Complete |
 | MEM-03 | Phase 4 | Complete |
 | MEM-04 | Phase 4 | Complete |
-| MCP-01 | Phase 5 | Pending |
-| MCP-02 | Phase 5 | Pending |
-| MCP-03 | Phase 5 | Pending |
-| MCP-04 | Phase 5 | Pending |
-| MCP-05 | Phase 5 | Pending |
-| SKIL-01 | Phase 6 | Complete |
-| SKIL-02 | Phase 6 | Complete |
-| SKIL-03 | Phase 6 | Complete |
+| MCP-01 | Phase 5 | Complete |
+| MCP-02 | Phase 5 | Complete |
+| MCP-03 | Phase 5 | Complete |
+| MCP-04 | Phase 5 | Complete |
+| MCP-05 | Phase 5 | Complete |
+| SKIL-01 | Phase 6 | Pending |
+| SKIL-02 | Phase 6 | Pending |
+| SKIL-03 | Phase 6 | Pending |
 | SKIL-04 | Phase 6 | Pending |
 | SKIL-05 | Phase 6 | Complete |
 | UI-01 | Phase 7 | Pending |

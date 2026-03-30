@@ -23,7 +23,7 @@
 ### Active
 
 - [ ] 内置技能（Skill）系统，支持动态加载与热更新
-- [ ] 完整实现 MCP（Model Context Protocol）协议，无缝对接外部工具与服务
+- [x] 完整实现 MCP（Model Context Protocol）协议，无缝对接外部工具与服务 — Validated in Phase 5: MCP Client (streamable HTTP + SSE fallback), MCPManager (lifecycle/health/reconnect), MCPToolHandler bridge, Admin API with JWT auth
 - [x] 具备短期/长期记忆能力，支持对话上下文与知识库检索 — Validated in Phase 4: Three-layer memory (Redis sliding window + Store semantic search + AgentState), workflow integration
 - [ ] 支持水平扩展与高并发场景
 - [ ] 对话模块：消息展示、输入框、流式响应渲染、思考过程展示
@@ -82,7 +82,7 @@
 | LangChain 作为 LLM 抽象层 | 统一接口支持多模型切换，降低模型锁定风险 | — Validated: OpenAI + Ollama factory, Plan/Respond nodes (Phase 2) |
 | shadcn/ui 作为前端组件库 | Radix UI 无障碍 + TailwindCSS 灵活样式，社区活跃 | — Pending |
 | Zustand 状态管理 | 轻量级，API 简洁，适合中等复杂度应用 | — Pending |
-| MCP 协议集成 | 标准化工具协议，生态正在快速扩展，避免自建工具协议的维护成本 | — Pending |
+| MCP 协议集成 | 标准化工具协议，生态正在快速扩展，避免自建工具协议的维护成本 | — Validated: MCPClient + MCPManager + MCPToolHandler + Admin API (Phase 5) |
 | Qdrant/Milvus 向量数据库 | 高性能向量检索，支持长期记忆的语义搜索 | — Pending |
 | 三层记忆架构 | 短期（Redis）+ 长期（向量库）+ 工作记忆（AgentState），平衡性能与上下文完整性 | — Validated: ShortTermMemory + LongTermMemory + MemoryService (Phase 4) |
 
@@ -104,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after Phase 4 completion*
+*Last updated: 2026-03-30 after Phase 5 completion*

@@ -75,6 +75,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.connection_manager = ConnectionManager()
     logger.info("connection_manager_initialized")
 
+    # MCPManager initialization (D-01, D-03)
+    from app.services.mcp import MCPManager
+    from app.db.session import async_session_factory
+
+    mcp_manager = MCPManager(
+        tool_registry=registry,
+        session_factory=async_session_factory,
+        timeout=settings.mcp_tool_timeout,
+        health_check_interval=settings.mcp_health_check_interval,
+    )
+    app.state.mcp_manager = mcp_manager
+    await mcp_manager.connect_all()
+    await mcp_manager.start_health_check()
+    logger.info("mcp_manager_initialized", servers=len(mcp_manager.clients))
+
     # Redis pub/sub listener for cross-worker WebSocket broadcasting
     pubsub_task = asyncio.create_task(
         start_pubsub_listener(
@@ -89,6 +104,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     logger.info("shutting_down_application")
+
+    # Shutdown MCPManager
+    if hasattr(app.state, "mcp_manager") and app.state.mcp_manager:
+        await app.state.mcp_manager.stop_health_check()
+        await app.state.mcp_manager.disconnect_all()
 
     # Cancel pub/sub listener
     app.state.pubsub_task.cancel()

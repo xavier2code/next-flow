@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     embedding_provider: str = "openai"
     embedding_model: str = "text-embedding-3-small"
 
+    # MCP Configuration
+    mcp_tool_timeout: float = 30.0
+    mcp_health_check_interval: float = 60.0
+
     # WebSocket
     ws_ping_interval: float = 20.0
     ws_ping_timeout: float = 20.0

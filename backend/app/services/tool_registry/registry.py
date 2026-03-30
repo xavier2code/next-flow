@@ -96,6 +96,7 @@ class ToolRegistry:
     def unregister(self, prefix: str) -> int:
         """Remove all tools whose name starts with the given prefix.
 
+        Used by MCPManager on deregistration (D-17) and reconnect refresh (D-08).
         Returns the number of tools removed.
         """
         to_remove = [name for name in self._tools if name.startswith(prefix)]
