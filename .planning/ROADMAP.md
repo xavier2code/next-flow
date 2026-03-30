@@ -101,9 +101,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — MCPClient with transport auto-fallback, MCPToolHandler with classified errors, ToolRegistry.unregister (MCP-01, MCP-05)
-- [ ] 05-02-PLAN.md — MCPManager with server lifecycle, health monitoring, exponential backoff reconnect, tool discovery and sync (MCP-02, MCP-03)
-- [ ] 05-03-PLAN.md — Admin API CRUD endpoints, MCPServerService, Pydantic schemas, main.py lifespan wiring (MCP-04)
+- [x] 05-01-PLAN.md — MCPClient with transport auto-fallback, MCPToolHandler with classified errors, ToolRegistry.unregister (MCP-01, MCP-05)
+- [x] 05-02-PLAN.md — MCPManager with server lifecycle, health monitoring, exponential backoff reconnect, tool discovery and sync (MCP-02, MCP-03)
+- [x] 05-03-PLAN.md — Admin API CRUD endpoints, MCPServerService, Pydantic schemas, main.py lifespan wiring (MCP-04)
 
 ### Phase 6: Skill System
 **Goal**: Users can upload, manage, and execute skills in isolated sandboxes with tools registered in the unified Tool Registry
@@ -114,11 +114,12 @@ Plans:
   2. Skills execute in Docker-based sandboxes with resource limits and timeout enforcement
   3. Skill lifecycle operations (upload, validate, enable, disable, hot-update) work end-to-end
   4. Skill-exposed tools are registered in the Tool Registry and invocable by the agent
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md — Infrastructure setup: MinIO, dependencies, Skill model migration, SKILL.md/ZIP validation, MinIO storage (SKIL-01, SKIL-02)
+- [ ] 06-02-PLAN.md — Docker sandbox executor, SkillToolHandler, SkillManager lifecycle with tool registration and health checks (SKIL-03, SKIL-05)
+- [ ] 06-03-PLAN.md — SkillService CRUD, REST API endpoints, main.py lifespan wiring, load_skill built-in tool, Agent context injection (SKIL-04, SKIL-05)
 
 ### Phase 7: Frontend
 **Goal**: Users have a complete web interface to manage agents, conversations, skills, and MCP servers with real-time streaming
@@ -150,7 +151,7 @@ Note: Phases 5 and 6 both depend on Phase 3 and can proceed in parallel if desir
 | 1. Foundation & Auth | 3/3 | Complete | 2026-03-28 |
 | 2. Agent Engine Core | 4/4 | Complete | 2026-03-29 |
 | 3. Communication Layer | 2/2 | Complete | 2026-03-29 |
-| 4. Memory System | 0/3 | Planning | - |
-| 5. MCP Integration | 0/3 | Planning | - |
-| 6. Skill System | 0/2 | Not started | - |
+| 4. Memory System | 3/3 | Complete | 2026-03-29 |
+| 5. MCP Integration | 3/3 | Complete | 2026-03-30 |
+| 6. Skill System | 0/3 | Not started | - |
 | 7. Frontend | 0/3 | Not started | - |
