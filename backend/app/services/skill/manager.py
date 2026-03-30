@@ -79,6 +79,13 @@ class SkillManager:
                     "skill_enable_failed", skill=skill.name, error=str(e)
                 )
 
+    async def enable_skill(self, skill: Skill) -> None:
+        """Enable a single skill: extract, start container, register tools.
+
+        Public interface for API endpoints and hot-update re-enable.
+        """
+        await self._enable_one(skill)
+
     async def _enable_one(self, skill: Skill) -> None:
         """Enable a single skill: extract from MinIO, start container, register tools.
 
@@ -159,6 +166,10 @@ class SkillManager:
         logger.info(
             "skill_enabled", skill=skill.name, type=skill.skill_type
         )
+
+    async def enable_skill(self, skill: Skill) -> None:
+        """Enable a skill: extract, start container, register tools (public API)."""
+        await self._enable_one(skill)
 
     async def disable_skill(self, skill_name: str) -> None:
         """Disable a skill: stop container, unregister tools, clean caches."""
