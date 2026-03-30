@@ -12,7 +12,14 @@ from app.models.user import User
 from app.services.tool_registry import ToolRegistry
 from app.services.user_service import get_by_id
 
-__all__ = ["get_db", "get_redis", "get_current_user", "get_tool_registry", "get_connection_manager"]
+__all__ = [
+    "get_db",
+    "get_redis",
+    "get_current_user",
+    "get_tool_registry",
+    "get_connection_manager",
+    "get_skill_manager",
+]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -44,3 +51,8 @@ def get_tool_registry(request: Request) -> ToolRegistry:
 def get_connection_manager(request: Request) -> ConnectionManager:
     """Retrieve the ConnectionManager instance from application state."""
     return request.app.state.connection_manager
+
+
+def get_skill_manager(request: Request):
+    """Retrieve the SkillManager instance from application state."""
+    return request.app.state.skill_manager

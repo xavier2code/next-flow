@@ -92,3 +92,14 @@ class ToolRegistry:
     def get_tool(self, name: str) -> ToolEntry | None:
         """Get a tool entry by name, or None if not found."""
         return self._tools.get(name)
+
+    def unregister(self, prefix: str) -> int:
+        """Remove all tools whose name starts with the given prefix.
+
+        Returns the number of tools removed.
+        """
+        to_remove = [name for name in self._tools if name.startswith(prefix)]
+        for name in to_remove:
+            del self._tools[name]
+            logger.info("tool_unregistered", name=name)
+        return len(to_remove)
