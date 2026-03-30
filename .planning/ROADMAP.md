@@ -119,7 +119,7 @@ Plans:
 Plans:
 - [x] 06-01-PLAN.md — Infrastructure setup: MinIO, dependencies, Skill model migration, SKILL.md/ZIP validation, MinIO storage (SKIL-01, SKIL-02)
 - [x] 06-02-PLAN.md — Docker sandbox executor, SkillToolHandler, SkillManager lifecycle with tool registration and health checks (SKIL-03, SKIL-05)
-- [ ] 06-03-PLAN.md — SkillService CRUD, REST API endpoints, main.py lifespan wiring, load_skill built-in tool, Agent context injection (SKIL-04, SKIL-05)
+- [x] 06-03-PLAN.md — SkillService CRUD, REST API endpoints, main.py lifespan wiring, load_skill built-in tool, Agent context injection (SKIL-04, SKIL-05)
 
 ### Phase 7: Frontend
 **Goal**: Users have a complete web interface to manage agents, conversations, skills, and MCP servers with real-time streaming
