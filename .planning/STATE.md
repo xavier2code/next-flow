@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-29T13:22:45.611Z"
-last_activity: 2026-03-29
+status: completed
+stopped_at: Phase 6 context gathered
+last_updated: "2026-03-30T02:23:21.728Z"
+last_activity: 2026-03-30
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 0
+  completed_phases: 5
+  total_plans: 15
+  completed_plans: 15
+  percent: 93
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Let agents reliably complete complex tasks through standardized skill and tool interfaces, flexibly connecting to multiple LLMs and external services
-**Current focus:** Phase 04 — memory-system
+**Current focus:** Phase 05 — mcp-integration
 
 ## Current Position
 
-Phase: 5
+Phase: 6
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-03-29
+Status: Completed 05-03-PLAN.md
+Last activity: 2026-03-30
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -63,6 +63,9 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P01 | 8min | 3 tasks | 6 files |
 | Phase 04 P02 | 8min | 2 tasks | 6 files |
 | Phase 04 P03 | 8min | 2 tasks | 6 files |
+| Phase 05 P01 | 6min | 3 tasks | 9 files |
+| Phase 05 P02 | 9min | 1 tasks | 4 files |
+| Phase 05 P03 | 5min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -93,6 +96,15 @@ Recent decisions affecting current work:
 - [Phase 04]: Updated test_memory.py to match plan-specified API (thread_id, nextflow key convention, ttl param, dict return from get_context) — Plan 01 test scaffold API did not match plan spec; fixed to use correct constructor/method signatures
 - [Phase 04]: Module-level _memory_service with setter pattern for wiring MemoryService into analyze and respond nodes (avoids passing through graph config)
 - [Phase 04]: thread_id extracted from LangGraph config['configurable']['thread_id'], not from AgentState -- state should not contain config-derived values
+- [Phase 05]: MCP SDK v1.26.0 installed matching project pinning strategy (mcp>=1.26.0,<1.27.0)
+- [Phase 05]: MCPClient manages session/transport context managers directly for transport auto-fallback
+- [Phase 05]: MCPToolHandler duck-types ToolHandler Protocol without explicit Protocol inheritance
+- [Phase 05]: MCPManager uses session_factory (async_sessionmaker) injected at construction for DB queries
+- [Phase 05]: Tool sync always unregisters old server tools before registering new ones (uniform connect/reconnect)
+- [Phase 05]: Health check uses list_tools() as lightweight liveness probe with 5s timeout
+- [Phase 05]: Admin API uses tenant_id (TenantMixin) instead of user_id for multi-tenancy, consistent with Agent model
+- [Phase 05]: list_server_tools reads from app.state.tool_registry at request time for real-time discovery
+- [Phase 05]: MCPManager wired in main.py lifespan: connect_all + start_health_check on startup, stop_health_check + disconnect_all on shutdown
 
 ### Pending Todos
 
@@ -107,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T13:22:45.603Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-mcp-integration/05-CONTEXT.md
+Last session: 2026-03-30T02:23:21.720Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-skill-system/06-CONTEXT.md
