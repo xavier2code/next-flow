@@ -19,6 +19,12 @@ class Skill(TimestampMixin, TenantMixin, Base):
     status: Mapped[str] = mapped_column(
         String(20), default="inactive", nullable=False
     )
+    version: Mapped[str] = mapped_column(String(50), default="0.0.1")
+    permissions: Mapped[dict | None] = mapped_column(JSON, default=dict)
+    package_url: Mapped[str | None] = mapped_column(String(500))
+    skill_type: Mapped[str] = mapped_column(
+        String(20), default="knowledge"
+    )
 
     def __repr__(self) -> str:
         return f"Skill(id={self.id}, name={self.name})"

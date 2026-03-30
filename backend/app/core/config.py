@@ -40,5 +40,19 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # MinIO Configuration
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "nextflow"
+    minio_secret_key: str = "nextflow123"
+    minio_secure: bool = False
+    minio_bucket: str = "skill-packages"
+
+    # Skill Sandbox Configuration
+    skill_sandbox_memory: str = "256m"
+    skill_sandbox_cpus: float = 1.0
+    skill_sandbox_timeout: float = 30.0
+    skill_sandbox_pids_limit: int = 100
+    skill_health_check_interval: float = 30.0
+
 
 settings = Settings()
