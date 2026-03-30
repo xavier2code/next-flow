@@ -38,14 +38,14 @@ created: 2026-03-30
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 07-01-01 | 01 | 1 | UI-01 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-01-02 | 01 | 1 | UI-01 | unit | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-02-01 | 02 | 1 | UI-02 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-02-02 | 02 | 1 | UI-03 | unit | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-02-03 | 02 | 1 | UI-04, UI-05, UI-06 | unit | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-03-01 | 03 | 2 | UI-07, UI-08 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-03-02 | 03 | 2 | UI-09 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
-| 07-03-03 | 03 | 2 | UI-10 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-01-T1 | 01 | 1 | UI-01 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-01-T2 | 01 | 1 | UI-01 | unit | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-02-T1 | 02 | 2 | UI-03, UI-04, UI-08 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-02-T2 | 02 | 2 | UI-05, UI-06 | unit | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-03-T1 | 03 | 2 | UI-07, UI-09, UI-10 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-03-T2 | 03 | 2 | UI-07 | integration | `cd frontend && npx vitest run` | ❌ W0 | ⬜ pending |
+| 07-04-T1 | 04 | 3 | UI-01 through UI-10 | build | `cd frontend && npx vitest run && npm run build` | ❌ W0 | ⬜ pending |
+| 07-04-T2 | 04 | 3 | UI-01 through UI-10 | manual UAT | Manual verification | N/A | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
