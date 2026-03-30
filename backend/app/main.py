@@ -90,6 +90,45 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await mcp_manager.start_health_check()
     logger.info("mcp_manager_initialized", servers=len(mcp_manager.clients))
 
+    # SkillManager initialization
+    from minio import Minio
+
+    from app.services.skill import SkillStorage
+    from app.services.skill.manager import SkillManager
+    from app.services.skill.sandbox import SkillSandbox
+
+    minio_client = Minio(
+        settings.minio_endpoint,
+        access_key=settings.minio_access_key,
+        secret_key=settings.minio_secret_key,
+        secure=settings.minio_secure,
+    )
+    skill_storage = SkillStorage(minio_client, bucket=settings.minio_bucket)
+    skill_sandbox = SkillSandbox(settings)
+
+    from app.db.session import async_session_factory
+
+    skill_manager = SkillManager(
+        tool_registry=registry,
+        session_factory=async_session_factory,
+        skill_storage=skill_storage,
+        skill_sandbox=skill_sandbox,
+        skill_content={},
+        timeout=settings.skill_sandbox_timeout,
+        health_check_interval=settings.skill_health_check_interval,
+    )
+    app.state.skill_manager = skill_manager
+    await skill_manager.enable_all()
+    await skill_manager.start_health_check()
+
+    # Wire skill_manager into builtins and analyze node
+    from app.services.tool_registry.builtins import set_skill_manager as set_builtins_skill_manager
+    from app.services.agent_engine.nodes.analyze import set_skill_manager as set_analyze_skill_manager
+
+    set_builtins_skill_manager(skill_manager)
+    set_analyze_skill_manager(skill_manager)
+    logger.info("skill_manager_initialized")
+
     # Redis pub/sub listener for cross-worker WebSocket broadcasting
     pubsub_task = asyncio.create_task(
         start_pubsub_listener(
@@ -104,6 +143,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     logger.info("shutting_down_application")
+
+    # Shutdown SkillManager
+    if hasattr(app.state, "skill_manager") and app.state.skill_manager:
+        await app.state.skill_manager.stop_health_check()
+        await app.state.skill_manager.disable_all()
 
     # Shutdown MCPManager
     if hasattr(app.state, "mcp_manager") and app.state.mcp_manager:
