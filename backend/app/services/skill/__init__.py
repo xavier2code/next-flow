@@ -1,6 +1,7 @@
 """Skill service package."""
 
 from app.services.skill.handler import SkillToolHandler
+from app.services.skill.manager import SkillManager
 from app.services.skill.sandbox import ContainerInfo, SkillSandbox
 from app.services.skill.storage import SkillStorage
 from app.services.skill.validator import (
@@ -11,6 +12,7 @@ from app.services.skill.validator import (
 
 __all__ = [
     "ContainerInfo",
+    "SkillManager",
     "SkillSandbox",
     "SkillStorage",
     "SkillToolHandler",
