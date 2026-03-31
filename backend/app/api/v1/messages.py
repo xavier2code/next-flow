@@ -1,18 +1,18 @@
 """Message endpoint: POST to accept user messages and trigger agent execution."""
 
 import asyncio
-import logging
 
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.core.exceptions import NotFoundException
+from app.core.logging import get_logger
 from app.models.user import User
 from app.schemas.message import MessageCreate
 from app.services.conversation_service import ConversationService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["messages"])
 
