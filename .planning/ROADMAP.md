@@ -44,7 +44,7 @@
 **Plans**: TBD
 
 Plans:
-- [ ] 08-01: Backend Dockerfile and .dockerignore
+- [x] 08-01: Backend Dockerfile and .dockerignore
 - [ ] 08-02: Entrypoint script, health check, and graceful shutdown
 
 ### Phase 9: Frontend + Nginx Containerization

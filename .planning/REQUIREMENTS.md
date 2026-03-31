@@ -7,12 +7,12 @@
 
 ### Backend Containerization
 
-- [ ] **BACK-01**: 后端 Dockerfile 使用多阶段构建（uv 安装依赖 + 精简运行时），基于 python:3.12-slim-bookworm
-- [ ] **BACK-02**: 后端容器以非 root 用户运行，仅拥有 /app 目录写权限
-- [ ] **BACK-03**: 后端容器包含 HEALTHCHECK 指令，调用现有 /api/v1/health 端点
-- [ ] **BACK-04**: 后端入口脚本在启动 Uvicorn 前执行 `alembic upgrade head` 迁移
-- [ ] **BACK-05**: 后端 .dockerignore 排除 .venv、__pycache__、.env、.pytest_cache、.git 等
-- [ ] **BACK-06**: 后端容器优雅关闭——CMD 使用 exec 形式，Uvicorn 接收 SIGTERM 后完成进行中的请求
+- [x] **BACK-01**: 后端 Dockerfile 使用多阶段构建（uv 安装依赖 + 精简运行时），基于 python:3.12-slim-bookworm
+- [x] **BACK-02**: 后端容器以非 root 用户运行，仅拥有 /app 目录写权限
+- [x] **BACK-03**: 后端容器包含 HEALTHCHECK 指令，调用现有 /api/v1/health 端点
+- [x] **BACK-04**: 后端入口脚本在启动 Uvicorn 前执行 `alembic upgrade head` 迁移
+- [x] **BACK-05**: 后端 .dockerignore 排除 .venv、__pycache__、.env、.pytest_cache、.git 等
+- [x] **BACK-06**: 后端容器优雅关闭——CMD 使用 exec 形式，Uvicorn 接收 SIGTERM 后完成进行中的请求
 
 ### Frontend + Nginx
 
@@ -63,12 +63,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BACK-01 | Phase 8 | Pending |
-| BACK-02 | Phase 8 | Pending |
-| BACK-03 | Phase 8 | Pending |
-| BACK-04 | Phase 8 | Pending |
-| BACK-05 | Phase 8 | Pending |
-| BACK-06 | Phase 8 | Pending |
+| BACK-01 | Phase 8 | Complete |
+| BACK-02 | Phase 8 | Complete |
+| BACK-03 | Phase 8 | Complete |
+| BACK-04 | Phase 8 | Complete |
+| BACK-05 | Phase 8 | Complete |
+| BACK-06 | Phase 8 | Complete |
 | FRNT-01 | Phase 9 | Pending |
 | FRNT-02 | Phase 9 | Pending |
 | FRNT-03 | Phase 9 | Pending |
