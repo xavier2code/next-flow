@@ -48,28 +48,27 @@
   3. `docker inspect` shows the container's HEALTHCHECK hitting `/api/v1/health` and reporting healthy
   4. Sending SIGTERM to the container completes in-flight requests before shutting down (no dropped connections)
   5. `.dockerignore` prevents `.venv`, `__pycache__`, `.env`, `.pytest_cache`, and `.git` from entering the build context
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [x] 08-01: Backend Dockerfile and .dockerignore
 - [x] 08-02: Entrypoint script, health check, and graceful shutdown
 
 ### Phase 9: Frontend + Nginx Containerization
-**Goal**: The React SPA is built inside Docker and served by Nginx, which also reverse-proxies API and WebSocket traffic to the backend
+**Goal**: The React SPA is built inside Docker and served by Nginx, which also reverse-proxies API traffic to the backend
 **Depends on**: Phase 8
 **Requirements**: FRNT-01, FRNT-02, FRNT-03, FRNT-04, FRNT-05, FRNT-06
 **Success Criteria** (what must be TRUE):
-  1. `docker build -t nextflow-frontend .` produces an Nginx-based image serving the React SPA with client-side routing working (page refresh does not return 404)
+  1. `docker build -t nextflow-frontend frontend/` produces an Nginx-based image serving the React SPA with client-side routing working (page refresh does not return 404)
   2. Nginx proxies `/api/v1/` requests to the backend container and the REST API responds correctly through the proxy
-  3. WebSocket connections through `/ws/` route to the backend with token-by-token streaming visible in the browser
+  3. SSE streaming through `/api/v1/` route to the backend with token-by-token streaming (proxy_buffering off)
   4. Static assets (JS, CSS, SVG) are served with gzip compression enabled
   5. `.dockerignore` prevents `node_modules`, `dist`, and `.git` from entering the build context
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: Frontend Dockerfile and .dockerignore
-- [ ] 09-02: Nginx configuration (SPA fallback, API proxy, WebSocket proxy, gzip)
+- [ ] 09-01-PLAN.md — Frontend Dockerfile, .dockerignore, and event_mapper.py relocation
+- [ ] 09-02-PLAN.md — Nginx configuration (SPA fallback, API proxy, SSE passthrough, gzip) and Vite dev proxy cleanup
 
 ### Phase 10: Production Compose & Hardening
 **Goal**: A single `docker-compose up` command brings up the entire NextFlow platform with all services healthy, properly networked, and hardened for production traffic
