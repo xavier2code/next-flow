@@ -40,9 +40,12 @@
 - Docker-based skill sandbox with MinIO storage
 - Full React 19 frontend with shadcn/ui (auth, chat streaming, management, settings)
 
+**Phase 8 complete (2026-03-31):** Backend Dockerfile — multi-stage build (521MB), python:3.12-slim-bookworm, Gunicorn + UvicornWorker, non-root user, HEALTHCHECK, Alembic auto-migration entrypoint, SkillSandbox Docker Compose network support.
+
 **Known gaps:**
 - SKIL-04 (hot-update): Skill lifecycle CRUD exists but hot-update in production requires Docker Watch integration
 - UI UAT pending: Frontend build verified (zero TS errors, 938KB bundle) but manual end-to-end testing requires running backend + frontend together
+- Docker socket permissions: UID 999 (nextflow) cannot access Docker socket — deferred to Phase 10
 - No RBAC: Auth is JWT-only, role-based access control deferred to v2
 - No RAG pipeline: Knowledge base ingestion not yet implemented
 
@@ -167,4 +170,4 @@
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-31 after v1.1 milestone started*
+*Last updated: 2026-03-31 after Phase 8 (Backend Containerization) completed*
