@@ -104,7 +104,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
+- [x] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
 - [ ] 11-02-PLAN.md — Frontend useChat integration + dead code removal
 - [ ] 11-03-PLAN.md — Backend WebSocket infrastructure cleanup
 
@@ -125,4 +125,4 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
 | 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
-| 11. Vercel AI SDK Deep Integration | v1.2 | 0/3 | Not started | - |
+| 11. Vercel AI SDK Deep Integration | v1.2 | 1/3 | In Progress|  |

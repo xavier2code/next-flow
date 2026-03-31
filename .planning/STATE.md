@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Docker Deployment
-status: verifying
-stopped_at: Completed 08-02-PLAN
-last_updated: "2026-03-31T08:58:54.157Z"
+status: executing
+stopped_at: Completed 11-01-PLAN
+last_updated: "2026-03-31T15:32:37.349Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 3
+  total_phases: 2
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 70
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** 让 Agent 能够通过标准化的技能和工具接口，灵活接入多种 LLM 模型和外部服务，可靠地完成复杂任务
-**Current focus:** Phase 08 — Backend Containerization
+**Current focus:** Phase 11 — Vercel AI SDK Deep Integration
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 11 (Vercel AI SDK Deep Integration) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-03-31
 
 Progress: [██████████░░░░░░░░░░] 70% (22 v1.0 plans done, 0/6 v1.1 plans done)
@@ -52,6 +52,7 @@ Progress: [██████████░░░░░░░░░░] 70% (22
 | 7. Frontend | 4 | Complete |
 | Phase 08 P01 | 3504 | 5 tasks | 6 files |
 | Phase 08 P02 | 31m | 5 tasks | 2 files |
+| Phase 11 P01 | 120 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Recent decisions affecting current work:
 - [Phase 08]: uv sync --frozen for reproducible Docker builds from existing uv.lock
 - [Phase 08]: PYTHONPATH=/app added to Dockerfile for Alembic module resolution
 - [Phase 08]: SkillSandbox reads COMPOSE_NETWORK_NAME env var for Docker Compose DNS resolution
+- [Phase 11]: Reused ThinkTagFilter from event_mapper.py for reasoning/text separation in SSE context
+- [Phase 11]: Data Stream Protocol v2 event format for Vercel AI SDK useChat consumption
+- [Phase 11]: SSE endpoint replaces REST POST + WebSocket push for agent streaming
 
 ### Pending Todos
 
@@ -82,7 +86,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-31T08:49:46.668Z
-Stopped at: Completed 08-02-PLAN
+Last session: 2026-03-31T15:32:37.347Z
+Stopped at: Completed 11-01-PLAN
 Resume file: None
 Next step: `/gsd:execute-phase`
