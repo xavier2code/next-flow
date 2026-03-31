@@ -5,6 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-31)
   - [Archive](milestones/v1.0-ROADMAP.md) | [Requirements](milestones/v1.0-REQUIREMENTS.md)
 - 🚧 **v1.1 Docker Deployment** — Phases 8-10 (in progress)
+- 📋 **v1.2 Vercel AI SDK Integration** — Phase 11 (planned)
 
 ## Phases
 
@@ -28,6 +29,12 @@
 - [ ] **Phase 8: Backend Containerization** — Package FastAPI backend into a production-ready Docker container
 - [ ] **Phase 9: Frontend + Nginx Containerization** — Build React SPA and serve behind Nginx reverse proxy
 - [ ] **Phase 10: Production Compose & Hardening** — Wire all services together with docker-compose.prod.yml and harden for production
+
+### 📋 v1.2 Vercel AI SDK Integration (Planned)
+
+**Milestone Goal:** Replace custom WebSocket streaming with Vercel AI SDK Data Stream Protocol v2 + useChat hook for a more robust, feature-rich chat experience.
+
+- [ ] **Phase 11: Vercel AI SDK Deep Integration** — Replace REST+WebSocket+Redis pub/sub streaming with SSE Data Stream v2 + useChat hook
 
 ## Phase Details
 
@@ -81,10 +88,25 @@ Plans:
 - [ ] 10-01: Production docker-compose.yml with service dependencies, networking, and environment template
 - [ ] 10-02: Production hardening (caching headers, security headers, resource limits, structured logging)
 
+### Phase 11: Vercel AI SDK Deep Integration
+**Goal**: Replace the custom REST+WebSocket+Redis pub/sub streaming architecture with Vercel AI SDK Data Stream Protocol v2 (SSE) + useChat hook, reducing frontend code by 60%+ while gaining built-in abort, regenerate, retry, tool invocation UI, and reasoning display
+**Depends on**: v1.0 complete (Phases 1-7)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. `POST /api/v1/conversations/{id}/chat` returns an SSE stream in Data Stream Protocol v2 format with `x-vercel-ai-ui-message-stream: v1` header
+  2. Frontend uses `useChat` from `@ai-sdk/react` for all chat interactions — no custom WebSocket or Zustand streaming state
+  3. LangGraph `astream_events` are mapped to protocol part types: `text-delta`, `reasoning-delta`, `tool-input-start/available`, `tool-output-available`, `finish`
+  4. ThinkTagFilter logic preserved — `<think...</think` content maps to `reasoning-delta` events
+  5. Abort (stop generation) and regenerate work correctly through the SSE transport
+  6. Tool calls display in the UI using useChat's built-in `toolInvocations` on UIMessage
+  7. Conversation CRUD REST APIs remain unchanged
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 8 → 9 → 10
+Phases execute in numeric order: 8 → 9 → 10 → 11
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -98,3 +120,4 @@ Phases execute in numeric order: 8 → 9 → 10
 | 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
 | 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
+| 11. Vercel AI SDK Deep Integration | v1.2 | 0/? | Not started | - |
