@@ -76,18 +76,16 @@ class MCPClient:
     async def _connect_streamable_http(self) -> None:
         """Connect via Streamable HTTP transport."""
         self._transport_ctx = streamable_http_client(self.server_url)
-        transport = await self._transport_ctx.__aenter__()
-        # streamable_http_client yields (read_stream, write_stream, session_params)
-        self._session_ctx = ClientSession(*transport)
+        read_stream, write_stream, _session_id = await self._transport_ctx.__aenter__()
+        self._session_ctx = ClientSession(read_stream, write_stream)
         self._session = await self._session_ctx.__aenter__()
         await self._session.initialize()
 
     async def _connect_sse(self) -> None:
         """Connect via legacy SSE transport."""
         self._transport_ctx = sse_client(self.server_url)
-        transport = await self._transport_ctx.__aenter__()
-        # sse_client yields (read_stream, write_stream)
-        self._session_ctx = ClientSession(*transport)
+        read_stream, write_stream, _session_id = await self._transport_ctx.__aenter__()
+        self._session_ctx = ClientSession(read_stream, write_stream)
         self._session = await self._session_ctx.__aenter__()
         await self._session.initialize()
 

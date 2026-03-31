@@ -37,6 +37,7 @@ class ToolRegistry:
         name: str | None = None,
         schema: dict | None = None,
         handler: ToolHandler | None = None,
+        description: str = "",
     ) -> Callable | None:
         """Register a tool, or return a decorator for registration.
 
@@ -46,14 +47,15 @@ class ToolRegistry:
         """
         # Direct call with all args
         if handler is not None and name is not None and schema is not None:
-            self._tools[name] = ToolEntry(name, schema, handler)
+            self._tools[name] = ToolEntry(name, schema, handler, description=description)
             logger.info("tool_registered", name=name)
             return None
 
         # Decorator usage: @registry.register(name=..., schema=...)
         if name is not None and schema is not None:
             def decorator(fn: Callable) -> Callable:
-                self._tools[name] = ToolEntry(name, schema, fn)
+                desc = description or (fn.__doc__ or "")
+                self._tools[name] = ToolEntry(name, schema, fn, description=desc)
                 logger.info("tool_registered", name=name, decorator=True)
                 return fn
             return decorator
@@ -86,8 +88,19 @@ class ToolRegistry:
         return result
 
     def list_tools(self) -> list[dict]:
-        """Return all registered tools with name and schema."""
-        return [{"name": t.name, "schema": t.schema} for t in self._tools.values()]
+        """Return all registered tools in LangChain bind_tools compatible format.
+
+        Uses 'parameters' key (not 'schema') and includes 'description'
+        so that llm.bind_tools() can produce complete function definitions.
+        """
+        return [
+            {
+                "name": t.name,
+                "description": t.description or "",
+                "parameters": t.schema,
+            }
+            for t in self._tools.values()
+        ]
 
     def get_tool(self, name: str) -> ToolEntry | None:
         """Get a tool entry by name, or None if not found."""

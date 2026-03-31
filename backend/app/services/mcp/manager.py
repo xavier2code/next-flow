@@ -149,6 +149,7 @@ class MCPManager:
                 name=tool_name,
                 schema=tool.get("inputSchema", {"type": "object"}),
                 handler=handler,
+                description=tool.get("description", "") or "",
             )
             logger.info("mcp_tool_registered", tool=tool_name)
 

@@ -180,8 +180,8 @@ async def list_server_tools(
                 MCPToolResponse(
                     name=tool_name,
                     namespaced_name=tool["name"],
-                    description=None,
-                    input_schema=tool.get("schema"),
+                    description=tool.get("description"),
+                    input_schema=tool.get("parameters"),
                 )
             )
 

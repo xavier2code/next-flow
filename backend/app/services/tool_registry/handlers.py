@@ -16,9 +16,10 @@ class ToolHandler(Protocol):
 
 
 class ToolEntry:
-    """Container for a registered tool: name, schema, and handler."""
+    """Container for a registered tool: name, description, schema, and handler."""
 
-    def __init__(self, name: str, schema: dict, handler: ToolHandler):
+    def __init__(self, name: str, schema: dict, handler: ToolHandler, description: str = ""):
         self.name = name
+        self.description = description
         self.schema = schema
         self.handler = handler
