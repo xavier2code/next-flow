@@ -47,17 +47,15 @@ export default function ActivityBar() {
           const isActive = activeNav === item.id
           return (
             <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => handleNavClick(item.id, item.path)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                </button>
+              <TooltipTrigger
+                onClick={() => handleNavClick(item.id, item.path)}
+                className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
               </TooltipTrigger>
               <TooltipContent side="right">{item.label}</TooltipContent>
             </Tooltip>
@@ -68,17 +66,15 @@ export default function ActivityBar() {
       {/* Bottom icon */}
       <div className="mt-auto">
         <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => handleNavClick(BOTTOM_ITEM.id, BOTTOM_ITEM.path)}
-              className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
-                activeNav === BOTTOM_ITEM.id
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <BOTTOM_ITEM.icon className="h-5 w-5" />
-            </button>
+          <TooltipTrigger
+            onClick={() => handleNavClick(BOTTOM_ITEM.id, BOTTOM_ITEM.path)}
+            className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+              activeNav === BOTTOM_ITEM.id
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BOTTOM_ITEM.icon className="h-5 w-5" />
           </TooltipTrigger>
           <TooltipContent side="right">{BOTTOM_ITEM.label}</TooltipContent>
         </Tooltip>

@@ -77,7 +77,7 @@ export default function AgentDetail({ agentId, isNew, onCreated, onCancel }: Age
       updateAgent.mutate({
         id: agentId,
         name,
-        system_prompt: systemPrompt || null,
+        system_prompt: systemPrompt || undefined,
         llm_config: llmConfig,
       })
     }
@@ -126,7 +126,7 @@ export default function AgentDetail({ agentId, isNew, onCreated, onCancel }: Age
           {/* Model */}
           <div className="space-y-2">
             <Label htmlFor="agent-model">模型</Label>
-            <Select value={model} onValueChange={setModel}>
+            <Select value={model} onValueChange={(v: string | null) => setModel(v ?? '')}>
               <SelectTrigger id="agent-model">
                 <SelectValue placeholder="选择模型" />
               </SelectTrigger>
@@ -165,9 +165,9 @@ export default function AgentDetail({ agentId, isNew, onCreated, onCancel }: Age
               max={2}
               step={0.1}
               value={[temperature]}
-              onChange={(value: number | number[]) => {
+              onValueChange={(value: number | readonly number[]) => {
                 const v = Array.isArray(value) ? value[0] : value
-                setTemperature(v)
+                setTemperature(typeof v === 'number' ? v : 0)
               }}
             />
             <div className="flex justify-between text-xs text-muted-foreground">

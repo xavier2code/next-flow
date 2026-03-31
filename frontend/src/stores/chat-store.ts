@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Message, StreamingMessage, ThinkingEntry, ToolCallEntry, ToolResultEntry } from '@/types/api'
-import type { WSEvent, ThinkingData, ToolCallData, ToolResultData, ChunkData, DoneData } from '@/types/ws-events'
+import type { WSEvent, ThinkingData, ToolCallData, ToolResultData, ChunkData } from '@/types/ws-events'
 
 interface ChatState {
   messages: Message[]
@@ -141,7 +141,6 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         break
       }
       case 'done': {
-        const _data = event.data as DoneData
         const { streamingMessage } = get()
         if (streamingMessage) {
           const finalMsg: Message = {

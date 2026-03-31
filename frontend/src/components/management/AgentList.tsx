@@ -58,7 +58,7 @@ export default function AgentList({ selectedAgentId, onSelectAgent, onCreateNew 
               <Skeleton key={i} className="h-20 w-full rounded-lg" />
             ))}
           </div>
-        ) : !agents || agents.length === 0 ? (
+        ) : !agents?.data || agents.data.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
             <p className="text-sm text-muted-foreground">暂无智能体</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -67,7 +67,7 @@ export default function AgentList({ selectedAgentId, onSelectAgent, onCreateNew 
           </div>
         ) : (
           <div className="space-y-2 p-4">
-            {agents.map((agent) => (
+            {agents.data.map((agent) => (
               <Card
                 key={agent.id}
                 className={`cursor-pointer p-3 transition-colors hover:bg-muted/50 ${

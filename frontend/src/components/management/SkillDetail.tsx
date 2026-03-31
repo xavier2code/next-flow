@@ -165,7 +165,7 @@ export default function SkillDetail({ skillId }: SkillDetailProps) {
               </div>
               <Switch
                 checked={skill.status === 'enabled'}
-                onChange={() => handleToggle(skill.status !== 'enabled')}
+                onCheckedChange={() => handleToggle(skill.status !== 'enabled')}
               />
             </div>
 

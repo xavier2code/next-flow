@@ -22,7 +22,7 @@ export default function AgentDropdown({
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs font-medium text-muted-foreground">智能体</span>
-      <Select value={value ?? undefined} onValueChange={onAgentChange}>
+      <Select value={value ?? undefined} onValueChange={(v: string | null) => { if (v) onAgentChange(v) }}>
         <SelectTrigger className="h-8 w-[180px]">
           <SelectValue placeholder="选择智能体" />
         </SelectTrigger>

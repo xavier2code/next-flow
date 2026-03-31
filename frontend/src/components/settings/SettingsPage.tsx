@@ -40,7 +40,7 @@ export default function SettingsPage() {
               </div>
               <Switch
                 checked={theme === 'dark'}
-                onChange={() => toggleTheme()}
+                onCheckedChange={() => toggleTheme()}
               />
             </div>
           </CardContent>

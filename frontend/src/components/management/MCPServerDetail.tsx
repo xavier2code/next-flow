@@ -165,7 +165,7 @@ export default function MCPServerDetail({ serverId, isNew, onCreated, onCancel }
             {/* Transport */}
             <div className="space-y-2">
               <Label htmlFor="server-transport">传输方式</Label>
-              <Select value={transportType} onValueChange={setTransportType}>
+              <Select value={transportType} onValueChange={(v: string | null) => setTransportType(v ?? 'streamable_http')}>
                 <SelectTrigger id="server-transport">
                   <SelectValue />
                 </SelectTrigger>

@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router'
-import { Plus, Cpu, Wrench, Server } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Cpu, Wrench, Server } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { useUiStore } from '@/stores/ui-store'
 import ConversationList from '@/components/chat/ConversationList'
