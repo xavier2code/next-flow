@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Docker Deployment
 status: verifying
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-31T15:37:43.611Z"
+stopped_at: Completed 11-04-PLAN.md
+last_updated: "2026-03-31T19:14:38.143Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 5
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 6
   percent: 70
 ---
 
@@ -55,6 +55,7 @@ Progress: [██████████░░░░░░░░░░] 70% (22
 | Phase 11 P01 | 120 | 1 tasks | 3 files |
 | Phase 11 P03 | 113 | 1 tasks | 5 files |
 | Phase 11 P02 | 163 | 2 tasks | 13 files |
+| Phase 11 P04 | 1 | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase 11]: useChat fetch override for auth token injection (localStorage access for fresh token on each request)
 - [Phase 11]: SidePanel uses Date.now() for tool invocation timestamps (useChat toolInvocations lack timestamp field)
 - [Phase 11]: ThinkingEntry display removed from SidePanel -- useChat does not surface reasoning parts in UIMessage
+- [Phase 11]: Reasoning entries render before tool entries in SidePanel (reasoning precedes tool calls in agent flow)
+- [Phase 11]: ReasoningEntry card defaults open when streaming, collapsed when done
+- [Phase 11]: Regenerate button only visible when status is idle and messages exist
 
 ### Pending Todos
 
@@ -92,7 +96,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-31T15:37:43.608Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-03-31T19:14:38.141Z
+Stopped at: Completed 11-04-PLAN.md
 Resume file: None
 Next step: `/gsd:execute-phase`

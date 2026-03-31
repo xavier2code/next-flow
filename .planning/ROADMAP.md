@@ -107,7 +107,7 @@ Plans:
 - [x] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
 - [x] 11-02-PLAN.md — Frontend useChat integration + dead code removal
 - [x] 11-03-PLAN.md — Backend WebSocket infrastructure cleanup
-- [ ] 11-04-PLAN.md — Reasoning display + Regenerate button + backend reasoning-end fix
+- [x] 11-04-PLAN.md — Reasoning display + Regenerate button + backend reasoning-end fix
 - [ ] 11-05-PLAN.md — Fix stale test file for current chat-store
 
 ## Progress
@@ -127,4 +127,4 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
 | 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
-| 11. Vercel AI SDK Deep Integration | v1.2 | 3/5 | Gap closure | 2026-03-31 |
+| 11. Vercel AI SDK Deep Integration | v1.2 | 4/5 | In Progress|  |
