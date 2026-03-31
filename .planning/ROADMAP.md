@@ -34,7 +34,7 @@
 
 **Milestone Goal:** Replace custom WebSocket streaming with Vercel AI SDK Data Stream Protocol v2 + useChat hook for a more robust, feature-rich chat experience.
 
-- [ ] **Phase 11: Vercel AI SDK Deep Integration** — Replace REST+WebSocket+Redis pub/sub streaming with SSE Data Stream v2 + useChat hook
+- [x] **Phase 11: Vercel AI SDK Deep Integration** — Replace REST+WebSocket+Redis pub/sub streaming with SSE Data Stream v2 + useChat hook (completed 2026-03-31)
 
 ## Phase Details
 
@@ -105,7 +105,7 @@ Plans:
 
 Plans:
 - [x] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
-- [ ] 11-02-PLAN.md — Frontend useChat integration + dead code removal
+- [x] 11-02-PLAN.md — Frontend useChat integration + dead code removal
 - [x] 11-03-PLAN.md — Backend WebSocket infrastructure cleanup
 
 ## Progress
@@ -125,4 +125,4 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
 | 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
-| 11. Vercel AI SDK Deep Integration | v1.2 | 2/3 | In Progress|  |
+| 11. Vercel AI SDK Deep Integration | v1.2 | 3/3 | Complete   | 2026-03-31 |
