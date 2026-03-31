@@ -28,10 +28,23 @@ export function useCreateConversation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { title: string }) =>
+    mutationFn: (data: { title: string; agent_id?: string }) =>
       apiClient.post<Conversation>('/api/v1/conversations', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    },
+  })
+}
+
+export function useUpdateConversation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; agent_id?: string | null }) =>
+      apiClient.patch<Conversation>(`/api/v1/conversations/${id}`, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['conversation', variables.id] })
     },
   })
 }

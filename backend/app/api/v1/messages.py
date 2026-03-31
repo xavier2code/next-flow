@@ -15,6 +15,7 @@ from app.db.session import async_session_factory
 from app.models.user import User
 from app.schemas.message import MessageCreate, MessageResponse
 from app.schemas.envelope import EnvelopeResponse
+from app.services.agent_service import AgentService
 from app.services.conversation_service import ConversationService
 
 logger = get_logger(__name__)
@@ -29,6 +30,7 @@ async def _trigger_agent_execution(
     user_id: str,
     message: str,
     pubsub_prefix: str,
+    agent_config: dict | None = None,
 ) -> None:
     """Run the LangGraph agent pipeline and stream events via Redis pub/sub.
 
@@ -42,6 +44,7 @@ async def _trigger_agent_execution(
     config = {
         "configurable": {
             "thread_id": conversation_id,
+            "agent_config": agent_config,
         },
     }
 
@@ -124,6 +127,18 @@ async def send_message(
     )
     await db.commit()
 
+    # Resolve agent config from conversation's linked agent
+    agent_config = None
+    if conversation.agent_id:
+        agent = await AgentService.get_for_user(
+            db, str(current_user.id), str(conversation.agent_id)
+        )
+        if agent:
+            agent_config = {
+                "system_prompt": agent.system_prompt,
+                "llm_config": agent.model_config,
+            }
+
     asyncio.create_task(
         _trigger_agent_execution(
             graph=request.app.state.graph,
@@ -132,6 +147,7 @@ async def send_message(
             user_id=str(current_user.id),
             message=data.content,
             pubsub_prefix=settings.redis_pubsub_prefix,
+            agent_config=agent_config,
         )
     )
 

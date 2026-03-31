@@ -15,7 +15,7 @@ class ConversationService:
     async def create(
         db: AsyncSession, user_id: str, data: ConversationCreate
     ) -> Conversation:
-        conversation = Conversation(user_id=user_id, title=data.title)
+        conversation = Conversation(user_id=user_id, title=data.title, agent_id=data.agent_id)
         db.add(conversation)
         await db.flush()
         await db.refresh(conversation)

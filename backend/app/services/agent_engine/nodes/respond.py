@@ -8,7 +8,7 @@ Per D-20: Synchronized writes to both Redis (short-term) and Store (long-term).
 import asyncio
 
 import structlog
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 
 from app.services.agent_engine.llm import get_llm
 from app.services.agent_engine.state import AgentState
@@ -29,6 +29,26 @@ def set_memory_service(service) -> None:
     _memory_service = service
 
 
+def _sanitize_messages_for_llm(messages: list) -> list:
+    """Reorder messages so SystemMessages appear at the beginning.
+
+    Some OpenAI-compatible providers (e.g., MiniMax) require system messages
+    to be at the start of the messages list and reject them mid-conversation.
+    This collects all SystemMessages, merges their content, and prepends them.
+    """
+    system_msgs = []
+    non_system_msgs = []
+    for msg in messages:
+        if isinstance(msg, SystemMessage):
+            system_msgs.append(msg)
+        else:
+            non_system_msgs.append(msg)
+    if not system_msgs:
+        return messages
+    merged_content = "\n".join(m.content for m in system_msgs)
+    return [SystemMessage(content=merged_content)] + non_system_msgs
+
+
 async def respond_node(state: AgentState, *, config: dict | None = None) -> dict:
     """Generate final response to the user using LLM and trigger memory write-back.
 
@@ -40,8 +60,15 @@ async def respond_node(state: AgentState, *, config: dict | None = None) -> dict
       config["configurable"]["thread_id"] -- the conversation thread ID
     """
     try:
-        llm = get_llm()
-        response = await llm.ainvoke(state["messages"])
+        # Extract llm_config from agent config (if present)
+        llm_config = None
+        if config:
+            agent_config = config.get("configurable", {}).get("agent_config")
+            if agent_config:
+                llm_config = agent_config.get("llm_config")
+
+        llm = get_llm(llm_config)
+        response = await llm.ainvoke(_sanitize_messages_for_llm(state["messages"]))
 
         # Trigger async memory write-back (per D-13, D-18)
         if _memory_service:

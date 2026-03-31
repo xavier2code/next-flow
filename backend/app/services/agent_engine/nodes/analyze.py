@@ -89,6 +89,15 @@ async def analyze_node(state: AgentState, *, config: dict | None = None) -> dict
         except Exception as e:
             logger.warning("skill_summary_injection_failed", error=str(e))
 
+    # Inject agent system prompt from config (if present)
+    if config:
+        agent_config = config.get("configurable", {}).get("agent_config")
+        if agent_config and agent_config.get("system_prompt"):
+            context_messages.append(
+                SystemMessage(content=agent_config["system_prompt"])
+            )
+            logger.info("agent_system_prompt_injected")
+
     if not _memory_service:
         logger.debug("memory_service_not_available")
         return {

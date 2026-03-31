@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
 import { apiClient } from '@/lib/api-client'
-import { useCreateConversation } from '@/hooks/use-conversations'
+import { useCreateConversation, useUpdateConversation, useConversation } from '@/hooks/use-conversations'
 import type { ConnectionStatus } from '@/types/ws-events'
 import ConnectionStatusIndicator from './ConnectionStatus'
 import AgentDropdown from './AgentDropdown'
@@ -33,7 +33,18 @@ export default function ChatView({
   } = useChatStore()
   const sidePanelOpen = useUiStore((s) => s.sidePanelOpen)
   const createConversation = useCreateConversation()
+  const updateConversation = useUpdateConversation()
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+
+  // Fetch conversation detail to restore agent selection
+  const { data: conversationDetail } = useConversation(conversationId ?? null)
+
+  // Sync selectedAgentId with conversation's agent_id
+  useEffect(() => {
+    if (conversationDetail) {
+      setSelectedAgentId(conversationDetail.agent_id)
+    }
+  }, [conversationDetail?.agent_id])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -64,6 +75,16 @@ export default function ChatView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingMessage])
 
+  const handleAgentChange = (agentId: string) => {
+    setSelectedAgentId(agentId)
+    if (currentConversationId) {
+      updateConversation.mutate({
+        id: currentConversationId,
+        agent_id: agentId,
+      })
+    }
+  }
+
   const handleSend = async (text: string) => {
     let activeConversationId = currentConversationId
 
@@ -72,6 +93,7 @@ export default function ChatView({
       try {
         const result = await createConversation.mutateAsync({
           title: text.slice(0, 50),
+          agent_id: selectedAgentId ?? undefined,
         })
         activeConversationId = result.id
         setCurrentConversation(activeConversationId)
@@ -91,8 +113,9 @@ export default function ChatView({
         `/api/v1/conversations/${activeConversationId}/messages`,
         { content: text },
       )
-    } catch {
-      // Message send failed - streaming events won't arrive
+    } catch (err) {
+      console.error('Failed to send message:', err)
+      useChatStore.getState().clearStreamingState()
     }
   }
 
@@ -105,7 +128,7 @@ export default function ChatView({
         <div className="flex items-center gap-4">
           <AgentDropdown
             value={selectedAgentId}
-            onAgentChange={setSelectedAgentId}
+            onAgentChange={handleAgentChange}
           />
         </div>
         <ConnectionStatusIndicator status={connectionStatus} />
