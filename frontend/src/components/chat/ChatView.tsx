@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useCreateConversation, useUpdateConversation, useConversation } from '@/hooks/use-conversations'
+import { RefreshCw } from 'lucide-react'
 import AgentDropdown from './AgentDropdown'
 import ChatMessage from './ChatMessage'
 import WelcomeScreen from './WelcomeScreen'
@@ -132,6 +133,15 @@ export default function ChatView({ conversationId }: ChatViewProps) {
           />
         </div>
         <div className="flex items-center gap-2">
+          {status !== 'streaming' && status !== 'submitted' && messages.length > 0 && (
+            <button
+              onClick={() => reload()}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className="inline-block h-3.5 w-3.5" />
+              <span className="ml-1">重新生成</span>
+            </button>
+          )}
           {status === 'streaming' && (
             <button
               onClick={stop}

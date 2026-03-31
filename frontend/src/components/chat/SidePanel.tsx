@@ -3,6 +3,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/ui-store'
 import type { UIMessage } from '@ai-sdk/react'
+import type { ReasoningUIPart } from 'ai'
+import ReasoningEntry from './ReasoningEntry'
 import ToolCallCard from './ToolCallCard'
 import ToolResultCard from './ToolResultCard'
 
@@ -10,7 +12,7 @@ interface SidePanelProps {
   messages: UIMessage[]
 }
 
-interface CombinedEntry {
+interface ToolEntry {
   id: string
   entryType: 'tool_call' | 'tool_result'
   toolName: string
@@ -18,11 +20,28 @@ interface CombinedEntry {
   result?: unknown
 }
 
+interface ReasoningEntryData {
+  id: string
+  text: string
+  state?: 'streaming' | 'done'
+}
+
 export default function SidePanel({ messages }: SidePanelProps) {
   const setSidePanelOpen = useUiStore((s) => s.setSidePanelOpen)
 
+  // Extract reasoning parts from UIMessage.parts
+  const reasoningEntries: ReasoningEntryData[] = messages.flatMap((msg) =>
+    (msg.parts ?? [])
+      .filter((part): part is ReasoningUIPart => part.type === 'reasoning')
+      .map((part, idx) => ({
+        id: `${msg.id}-reasoning-${idx}`,
+        text: part.text,
+        state: part.state,
+      }))
+  )
+
   // Extract all tool invocations from messages, sorted by message order
-  const allEntries: CombinedEntry[] = messages.flatMap((msg) =>
+  const toolEntries: ToolEntry[] = messages.flatMap((msg) =>
     (msg.toolInvocations ?? []).map((inv) => ({
       id: inv.toolCallId,
       entryType: inv.state === 'result' ? ('tool_result' as const) : ('tool_call' as const),
@@ -31,6 +50,8 @@ export default function SidePanel({ messages }: SidePanelProps) {
       result: inv.state === 'result' ? inv.result : undefined,
     }))
   )
+
+  const hasEntries = reasoningEntries.length > 0 || toolEntries.length > 0
 
   return (
     <div className="flex h-full w-80 flex-col border-l bg-card">
@@ -50,14 +71,23 @@ export default function SidePanel({ messages }: SidePanelProps) {
       {/* Entries list */}
       <ScrollArea className="flex-1">
         <div className="p-4">
-          {allEntries.length === 0 ? (
+          {!hasEntries ? (
             <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
               <span>等待执行事件</span>
               <span className="ml-1 animate-pulse">...</span>
             </div>
           ) : (
             <div className="space-y-3">
-              {allEntries.map((entry) =>
+              {/* Reasoning entries first (reasoning happens before tools in the flow) */}
+              {reasoningEntries.map((entry) => (
+                <ReasoningEntry
+                  key={entry.id}
+                  text={entry.text}
+                  state={entry.state}
+                />
+              ))}
+              {/* Tool entries */}
+              {toolEntries.map((entry) =>
                 entry.entryType === 'tool_call' ? (
                   <ToolCallCard
                     key={entry.id}

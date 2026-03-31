@@ -108,6 +108,13 @@ async def _sse_generator(
                                     "delta": fcontent,
                                 })
                             elif ftype == "chunk":
+                                # Close reasoning part before text begins
+                                if has_reasoning_start:
+                                    has_reasoning_start = False
+                                    yield _sse_line({
+                                        "type": "reasoning-end",
+                                        "id": reason_id,
+                                    })
                                 if not has_text_start:
                                     has_text_start = True
                                     yield _sse_line({
@@ -164,6 +171,13 @@ async def _sse_generator(
                                 "delta": fcontent,
                             })
                         elif ftype == "chunk":
+                            # Close reasoning part before text begins
+                            if has_reasoning_start:
+                                has_reasoning_start = False
+                                yield _sse_line({
+                                    "type": "reasoning-end",
+                                    "id": reason_id,
+                                })
                             if not has_text_start:
                                 has_text_start = True
                                 yield _sse_line({
@@ -176,6 +190,14 @@ async def _sse_generator(
                                 "delta": fcontent,
                             })
                             assistant_content_parts.append(fcontent)
+
+                    # Close reasoning if still active when stream ends
+                    if has_reasoning_start:
+                        has_reasoning_start = False
+                        yield _sse_line({
+                            "type": "reasoning-end",
+                            "id": reason_id,
+                        })
 
                     # Finish event
                     yield _sse_line({"type": "finish", "finishReason": "stop"})
