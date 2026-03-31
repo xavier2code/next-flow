@@ -43,16 +43,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Checkpointer initialization
     from app.services.agent_engine.checkpointer import create_checkpointer
 
-    app.state.checkpointer = await create_checkpointer(settings.database_url)
+    cp_result = await create_checkpointer(settings.database_url)
+    app.state.checkpointer = cp_result["checkpointer"]
+    app.state.checkpointer_ctx = cp_result["ctx"]
     logger.info("checkpointer_initialized")
 
     # Store initialization (long-term memory with semantic search)
     from app.services.agent_engine.store import create_store
 
-    store_result = await create_store(settings.database_url)
-    app.state.store = store_result["store"]
-    app.state.store_ctx = store_result["store_ctx"]
-    logger.info("store_initialized")
+    try:
+        store_result = await create_store(settings.database_url)
+        app.state.store = store_result["store"]
+        app.state.store_ctx = store_result["store_ctx"]
+        logger.info("store_initialized")
+    except Exception as e:
+        logger.warning("store_init_failed", error=str(e))
+        app.state.store = None
+        app.state.store_ctx = None
 
     # MemoryService initialization
     from app.services.memory import MemoryService
@@ -160,6 +167,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await app.state.pubsub_task
     except asyncio.CancelledError:
         pass
+
+    # Clean up Checkpointer context manager
+    if hasattr(app.state, "checkpointer_ctx") and app.state.checkpointer_ctx:
+        await app.state.checkpointer_ctx.__aexit__(None, None, None)
 
     # Clean up Store context manager
     if hasattr(app.state, "store_ctx") and app.state.store_ctx:

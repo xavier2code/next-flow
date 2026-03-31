@@ -10,7 +10,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 logger = structlog.get_logger()
 
 
-async def create_checkpointer(database_url: str) -> AsyncPostgresSaver:
+async def create_checkpointer(database_url: str) -> dict:
     """Create and initialize the async PostgreSQL checkpointer.
 
     Args:
@@ -18,13 +18,15 @@ async def create_checkpointer(database_url: str) -> AsyncPostgresSaver:
                      The '+asyncpg' suffix is stripped for psycopg3 compatibility.
 
     Returns:
-        Initialized AsyncPostgresSaver with checkpoint tables created.
+        Dict with 'checkpointer' (AsyncPostgresSaver) and 'ctx' (the async
+        context manager that must stay open for the saver's lifetime).
     """
     # Strip SQLAlchemy async driver suffix for psycopg3 (Pitfall 6)
     conn_string = database_url.replace("+asyncpg", "")
     logger.info("creating_checkpointer", conn_string=conn_string[:30] + "...")
 
-    saver = AsyncPostgresSaver.from_conn_string(conn_string)
-    await saver.setup()  # Create checkpoint tables (idempotent)
+    # langgraph-checkpoint-postgres >= 3.0 returns an async context manager
+    ctx = AsyncPostgresSaver.from_conn_string(conn_string)
+    checkpointer = await ctx.__aenter__()
     logger.info("checkpointer_ready")
-    return saver
+    return {"checkpointer": checkpointer, "ctx": ctx}

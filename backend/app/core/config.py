@@ -24,11 +24,14 @@ class Settings(BaseSettings):
     default_provider: str = "openai"
     default_model: str = "gpt-4o"
     openai_api_key: str = ""
+    openai_api_base: str = ""  # Custom base URL for OpenAI-compatible providers (e.g. MiniMax)
     ollama_base_url: str = "http://localhost:11434"
 
     # Embedding Configuration (D-22, D-25)
     embedding_provider: str = "openai"
     embedding_model: str = "text-embedding-3-small"
+    embedding_api_key: str = ""  # Separate API key for embeddings (defaults to openai_api_key)
+    embedding_api_base: str = ""  # Custom base URL for embedding provider
 
     # MCP Configuration
     mcp_tool_timeout: float = 30.0

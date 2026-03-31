@@ -32,13 +32,16 @@ def get_llm(config: dict | None = None) -> ChatOpenAI | ChatOllama:
     max_tokens = config.get("max_tokens", 4096)
 
     if provider == "openai":
-        return ChatOpenAI(
+        kwargs = dict(
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
             streaming=True,  # D-10
             api_key=settings.openai_api_key or None,
         )
+        if settings.openai_api_base:
+            kwargs["base_url"] = settings.openai_api_base
+        return ChatOpenAI(**kwargs)
     elif provider == "ollama":
         return ChatOllama(
             model=model,

@@ -30,10 +30,13 @@ def _get_embedder() -> OpenAIEmbeddings | OllamaEmbeddings:
         ValueError: If the provider string is not recognized.
     """
     if settings.embedding_provider == "openai":
-        return OpenAIEmbeddings(
+        kwargs = dict(
             model=settings.embedding_model,
-            api_key=settings.openai_api_key or None,
+            api_key=settings.embedding_api_key or settings.openai_api_key or None,
         )
+        if settings.embedding_api_base:
+            kwargs["base_url"] = settings.embedding_api_base
+        return OpenAIEmbeddings(**kwargs)
     elif settings.embedding_provider == "ollama":
         return OllamaEmbeddings(
             model=settings.embedding_model,

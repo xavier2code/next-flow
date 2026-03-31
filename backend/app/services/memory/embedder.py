@@ -30,7 +30,8 @@ def get_embedder(config: dict | None = None) -> OpenAIEmbeddings | OllamaEmbeddi
     if provider == "openai":
         return OpenAIEmbeddings(
             model=model,
-            api_key=settings.openai_api_key or None,
+            api_key=settings.embedding_api_key or settings.openai_api_key or None,
+            base_url=settings.embedding_api_base or None,
         )
     elif provider == "ollama":
         return OllamaEmbeddings(
