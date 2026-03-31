@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Docker Deployment
-status: verifying
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-31T19:40:16.864Z"
+status: executing
+stopped_at: Completed 09-02-PLAN
+last_updated: "2026-03-31T19:54:12.172Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 7
+  total_plans: 8
+  completed_plans: 8
   percent: 70
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** 让 Agent 能够通过标准化的技能和工具接口，灵活接入多种 LLM 模型和外部服务，可靠地完成复杂任务
-**Current focus:** Phase 11 — Vercel AI SDK Deep Integration
+**Current focus:** Phase 09 — frontend-nginx-containerization
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 09 (frontend-nginx-containerization) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-31
 
 Progress: [██████████░░░░░░░░░░] 70% (22 v1.0 plans done, 0/6 v1.1 plans done)
@@ -56,6 +56,7 @@ Progress: [██████████░░░░░░░░░░] 70% (22
 | Phase 11 P03 | 113 | 1 tasks | 5 files |
 | Phase 11 P02 | 163 | 2 tasks | 13 files |
 | Phase 11 P04 | 1 | 1 tasks | 4 files |
+| Phase 09 P02 | 1min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [Phase 11]: Reasoning entries render before tool entries in SidePanel (reasoning precedes tool calls in agent flow)
 - [Phase 11]: ReasoningEntry card defaults open when streaming, collapsed when done
 - [Phase 11]: Regenerate button only visible when status is idle and messages exist
+- [Phase 09]: Nginx config uses conf.d/default.conf drop-in (preserves default nginx.conf worker/error settings)
+- [Phase 09]: proxy_buffering off on entire /api/v1/ block (harmless for regular API, critical for SSE)
+- [Phase 09]: Stale /ws WebSocket proxy removed from Vite dev config (Phase 11 replaced WebSocket with SSE)
 
 ### Pending Todos
 
@@ -96,12 +100,7 @@ None.
 
 ## Session Continuity
 
-<<<<<<< HEAD
-Last session: 2026-03-31T19:40:16.862Z
-Stopped at: Phase 9 context gathered
-=======
-Last session: 2026-03-31T19:11:57.000Z
-Stopped at: Completed 11-05-PLAN
->>>>>>> worktree-agent-acda415d
-Resume file: .planning/phases/09-frontend-nginx-containerization/09-CONTEXT.md
+Last session: 2026-03-31T19:54:12.170Z
+Stopped at: Completed 09-02-PLAN
+Resume file: None
 Next step: `/gsd:execute-phase`

@@ -68,7 +68,7 @@ Plans:
 
 Plans:
 - [ ] 09-01-PLAN.md — Frontend Dockerfile, .dockerignore, and event_mapper.py relocation
-- [ ] 09-02-PLAN.md — Nginx configuration (SPA fallback, API proxy, SSE passthrough, gzip) and Vite dev proxy cleanup
+- [x] 09-02-PLAN.md — Nginx configuration (SPA fallback, API proxy, SSE passthrough, gzip) and Vite dev proxy cleanup
 
 ### Phase 10: Production Compose & Hardening
 **Goal**: A single `docker-compose up` command brings up the entire NextFlow platform with all services healthy, properly networked, and hardened for production traffic
