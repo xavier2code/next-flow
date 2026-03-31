@@ -135,7 +135,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Project scaffold, shadcn/ui, auth pages, API client, Zustand stores, WebSocket hook, app shell (UI-01, UI-02)
+- [x] 07-01-PLAN.md — Project scaffold, shadcn/ui, auth pages, API client, Zustand stores, WebSocket hook, app shell (UI-01, UI-02)
 - [ ] 07-02-PLAN.md — Chat view with streaming messages, Markdown rendering, side panel for thinking/tool events, conversation sidebar (UI-03, UI-04, UI-05, UI-06, UI-08)
 - [ ] 07-03-PLAN.md — Management pages (Agent/Skills/MCP tabs with list+detail), settings page with theme toggle (UI-07, UI-09, UI-10)
 - [ ] 07-04-PLAN.md — Final build verification and user acceptance testing (UI-01 through UI-10)
