@@ -91,7 +91,7 @@ Plans:
 ### Phase 11: Vercel AI SDK Deep Integration
 **Goal**: Replace the custom REST+WebSocket+Redis pub/sub streaming architecture with Vercel AI SDK Data Stream Protocol v2 (SSE) + useChat hook, reducing frontend code by 60%+ while gaining built-in abort, regenerate, retry, tool invocation UI, and reasoning display
 **Depends on**: v1.0 complete (Phases 1-7)
-**Requirements**: TBD
+**Requirements**: SC-01, SC-02, SC-03, SC-04, SC-05, SC-06, SC-07
 **Success Criteria** (what must be TRUE):
   1. `POST /api/v1/conversations/{id}/chat` returns an SSE stream in Data Stream Protocol v2 format with `x-vercel-ai-ui-message-stream: v1` header
   2. Frontend uses `useChat` from `@ai-sdk/react` for all chat interactions — no custom WebSocket or Zustand streaming state
@@ -100,8 +100,13 @@ Plans:
   5. Abort (stop generation) and regenerate work correctly through the SSE transport
   6. Tool calls display in the UI using useChat's built-in `toolInvocations` on UIMessage
   7. Conversation CRUD REST APIs remain unchanged
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
+- [ ] 11-02-PLAN.md — Frontend useChat integration + dead code removal
+- [ ] 11-03-PLAN.md — Backend WebSocket infrastructure cleanup
 
 ## Progress
 
@@ -120,4 +125,4 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
 | 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
-| 11. Vercel AI SDK Deep Integration | v1.2 | 0/? | Not started | - |
+| 11. Vercel AI SDK Deep Integration | v1.2 | 0/3 | Not started | - |
