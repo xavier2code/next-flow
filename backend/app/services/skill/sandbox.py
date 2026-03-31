@@ -7,6 +7,7 @@ Per D-20, D-21, D-23 to D-28: Container lifecycle with security hardening.
 """
 
 import json
+import os
 from dataclasses import dataclass
 
 import docker
@@ -37,6 +38,7 @@ class SkillSandbox:
     def __init__(self, settings) -> None:
         self._settings = settings
         self._docker = docker.from_env()
+        self._network = os.environ.get("COMPOSE_NETWORK_NAME", "")
 
     def start_service_container(
         self,
@@ -60,6 +62,9 @@ class SkillSandbox:
         permissions = permissions or {}
         container_name = f"nextflow-skill-{skill_name}"
         network_mode = "bridge" if permissions.get("network") else "none"
+        # When running inside Docker Compose, connect skill containers to
+        # the compose network for DNS resolution (e.g., backend -> backend:8000)
+        network_name = self._network if self._network else None
 
         container = self._docker.containers.run(
             image="nextflow-skill-base:latest",
@@ -71,6 +76,7 @@ class SkillSandbox:
             security_opt=["no-new-privileges"],
             cap_drop=["ALL"],
             network_mode=network_mode,
+            network=network_name,
             read_only=True,
             tmpfs={"/tmp": "size=50m"},
             detach=True,
