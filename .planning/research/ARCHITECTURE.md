@@ -1,535 +1,825 @@
-# Architecture Patterns
+# Architecture Patterns: Docker Containerization & Production Deployment
 
-**Domain:** Universal Agent Platform (LangGraph + MCP + FastAPI)
-**Researched:** 2026-03-28
+**Domain:** Containerizing the existing NextFlow Agent Platform
+**Researched:** 2026-03-31
+**Confidence:** HIGH (based on code analysis of existing system + well-established Docker/Nginx patterns)
 
 ## Recommended Architecture
 
-NextFlow follows a layered microservices architecture with a clear separation between the presentation layer (React SPA), the API gateway (FastAPI), the orchestration engine (LangGraph), and the data/storage layer. The Agent Engine is the heart of the system -- every user request flows through it.
+The containerized deployment adds three new services to the existing docker-compose infrastructure (postgres, redis, minio): a **backend** container, a **frontend-nginx** container, and an **nginx** reverse proxy. The reverse proxy is the single entry point, routing API calls to the backend, WebSocket upgrades to the backend, and static file requests to the frontend container. The backend container mounts the Docker socket so the existing SkillSandbox can continue spawning sibling skill containers on the host.
 
 ```
-                                    +-------------------+
-                                    |   React SPA       |
-                                    |  (Vite + shadcn)  |
-                                    +--------+----------+
-                                             |
-                              REST API (CRUD) | WebSocket (streaming)
-                                             |
-                                    +--------v----------+
-                                    |   FastAPI Gateway  |
-                                    |  + JWT/RBAC Auth   |
-                                    +--------+----------+
-                                             |
-                          +------------------+------------------+
-                          |                  |                  |
-                   +------v------+   +-------v------+   +------v------+
-                   | Agent       |   | Skill        |   | MCP Manager |
-                   | Engine      |   | Manager      |   |             |
-                   | (LangGraph) |   |              |   |             |
-                   +------+------+   +-------+------+   +------+------+
-                          |                  |                  |
-                   +------v------+   +-------v------+   +------v------+
-                   | Tool        |<--+   Sandbox     |   | MCP Clients |
-                   | Registry    |   |   Executor    |   | (multi-SSE) |
-                   +------+------+   +---------------+   +------+------+
-                          |                                     |
-                   +------v-------------------------------------v------+
-                   |              Memory System                        |
-                   |  Working (State) | Short-term (Redis) | Long-term |
-                   |                  |                    | (Vector)  |
-                   +------+-----------+----------+---------+-----------+
-                          |                      |         |
-                   +------v------+   +-----------v--+  +---v--------+
-                   | PostgreSQL  |   |    Redis     |  | Qdrant/    |
-                   | (business)  |   | (cache/sess) |  | Milvus     |
-                   +-------------+   +--------------+  +------------+
-                                                             |
-                                                    +--------v--------+
-                                                    |     MinIO       |
-                                                    | (files/skills)  |
-                                                    +-----------------+
+                          External Traffic (port 80/443)
+                                    |
+                            +-------v--------+
+                            |  nginx-proxy   |
+                            |  (reverse proxy|
+                            |   + static     |
+                            |   files)       |
+                            +---+--------+---+
+                                |        |
+                 /api/v1/*      |        |  /ws/*
+                 /health        |        |
+                                |        |
+                         +------v--+   +-v-----------+
+                         | frontend|   |  backend     |
+                         | (static |   |  (FastAPI     |
+                         |  files) |   |   uvicorn)   |
+                         +---------+   +------+-------+
+                                              |
+                      +---------------+-------+--------+-----------+
+                      |               |                |           |
+                +-----v-----+  +-----v-----+  +-------v---+ +----v----+
+                | postgres  |  |   redis   |  |   minio   | | Docker  |
+                | (pgvector)|  |   (7)     |  |           | | socket  |
+                +-----------+  +-----------+  +-----------+ | (host)  |
+                                                            +----+----+
+                                                                 |
+                                                           +-----v------+
+                                                           | Skill      |
+                                                           | containers |
+                                                           | (sandbox)  |
+                                                           +------------+
+```
+
+### Unified Nginx Variant (Recommended)
+
+Rather than two separate Nginx containers (one for frontend static files, one for proxy), a single Nginx container serves both roles. The frontend build artifacts are copied into the Nginx image at build time. This reduces operational overhead, eliminates one network hop, and simplifies the compose file.
+
+```
+docker-compose.yml services:
+
+  postgres       -- existing, unchanged
+  redis          -- existing, unchanged
+  minio          -- existing, unchanged
+  backend        -- NEW: FastAPI + uvicorn in container
+  nginx          -- NEW: single entry point (static files + reverse proxy)
 ```
 
 ### Component Boundaries
 
-| Component | Responsibility | Communicates With | Technology |
-|-----------|---------------|-------------------|------------|
-| **React SPA** | UI rendering, user interaction, real-time message display | FastAPI Gateway (REST + WS) | React 18, TypeScript, Vite, shadcn/ui, Zustand |
-| **FastAPI Gateway** | Request routing, authentication, WebSocket lifecycle, API surface | Agent Engine, Skill Manager, MCP Manager, User Service | Python, FastAPI, PyJWT |
-| **Agent Engine** | LangGraph StateGraph workflow: Analyze -> Plan -> Execute -> Reflect -> Respond. State persistence via checkpointer. Streaming via v2 StreamPart. | Tool Registry, Memory System, FastAPI Gateway | Python, LangGraph, LangChain |
-| **Skill Manager** | Skill lifecycle (register, load, enable/disable, hot-update), package validation, metadata storage | Sandbox Executor, Tool Registry, MinIO, PostgreSQL | Python |
-| **MCP Manager** | MCP server registration, connection lifecycle, tool discovery aggregation, health monitoring | MCP Clients, Tool Registry, PostgreSQL | Python, MCP SDK |
-| **MCP Clients** | 1:1 connections to external MCP servers via Streamable HTTP or stdio. JSON-RPC 2.0 protocol. | MCP Manager, Tool Registry | Python, MCP SDK |
-| **Tool Registry** | Unified tool namespace merging built-in tools, skill-exposed tools, and MCP-discovered tools. JSON Schema validation. Routes invocations to correct backend. | Agent Engine, Skill Manager, MCP Manager | Python |
-| **Sandbox Executor** | Isolated skill execution (Docker/gVisor). Resource limits, timeout enforcement, output capture. | Skill Manager, Tool Registry | Docker, Python |
-| **Memory System** | Three-layer memory coordination. Working memory in AgentState (LangGraph State). Short-term in Redis (per-thread context windows). Long-term in vector DB (cross-thread semantic search via LangGraph Store). | Agent Engine, PostgreSQL, Redis, Qdrant/Milvus | LangGraph Store, Redis, Qdrant |
-| **User Service** | Authentication (JWT), authorization (RBAC), user profiles, conversation history management | FastAPI Gateway, PostgreSQL | Python, SQLAlchemy |
-| **Task Queue** | Async processing for long-running tasks (skill packaging, batch operations, report generation) | FastAPI Gateway, Skill Manager, PostgreSQL | Celery, Redis |
+| Component | Status | Responsibility | Communicates With |
+|-----------|--------|---------------|-------------------|
+| **nginx** | NEW | Reverse proxy, static file serving, WebSocket upgrade, SSL termination | backend (proxy_pass), serves frontend static files directly |
+| **backend** | NEW container | FastAPI application (auth, agent engine, REST API, WebSocket endpoint) | postgres, redis, minio, Docker socket (skill sandbox) |
+| **frontend (build stage)** | NEW | React SPA build, produces static files for Nginx | Build artifact only (not a runtime service) |
+| **postgres** | EXISTING (modified) | Relational data, LangGraph checkpointer | backend (internal network) |
+| **redis** | EXISTING (modified) | Cache, session store, pub/sub for cross-worker WS | backend (internal network) |
+| **minio** | EXISTING (modified) | Skill packages, document storage | backend (internal network) |
+| **Skill containers** | EXISTING behavior | Sandboxed skill execution | Spawned by backend via Docker socket |
 
-### Data Flow
-
-**Primary conversation flow (the critical path):**
+### Data Flow (Containerized)
 
 ```
-User types message
-       |
-       v
-React SPA sends via WebSocket
-       |
-       v
-FastAPI Gateway authenticates JWT, resolves user/session
-       |
-       v
-Gateway creates/retrieves LangGraph thread (thread_id = session_id)
-       |
-       v
-Agent Engine receives message as HumanMessage in State
-       |
-       v
-StateGraph executes: START -> Analyze -> Plan -> Execute -> Reflect -> Respond -> END
-       |                                                          |
-       |  During Execute node:                                    |
-       |  - Tool Registry resolves tool_name to backend           |
-       |  - Routes to built-in / skill / MCP as appropriate       |
-       |  - Each tool_call streams back tool_call event           |
-       |  - Each tool_result streams back tool_result event       |
-       |                                                          |
-       |  During all nodes:                                       |
-       |  - Memory System injects context (short + long term)     |
-       |  - Checkpointer saves state at each super-step           |
-       |  - StreamPart events flow back via WebSocket             |
-       |
-       v
-Final response streamed as chunk + done events
-       |
-       v
-React SPA renders: thinking bubbles, tool calls, streamed text, final answer
+Browser request
+      |
+      v
+nginx:80 (single entry point)
+      |
+      +--- GET /api/v1/* ---> proxy_pass http://backend:8000/api/v1/*
+      |
+      +--- GET /health ----> proxy_pass http://backend:8000/health
+      |
+      +--- WS /ws/chat ----> proxy_pass http://backend:8000/ws/chat (upgrade headers)
+      |
+      +--- GET /* ----------> serve /usr/share/nginx/html/index.html (SPA fallback)
+      |                         /assets/* --> cached static files
+      |
+      v
+Response to browser
 ```
 
-**Event streaming detail (WebSocket):**
-
-The Agent Engine uses LangGraph's v2 streaming protocol. Each StreamPart has shape `{type, ns, data}` where:
-- `type` = `values` | `updates` | `messages` | `custom` | `checkpoints` | `tasks` | `debug`
-- `ns` = subgraph namespace (for nested graph routing)
-- `data` = payload specific to type
-
-The FastAPI gateway maps these to application-level WebSocket events:
-
-| LangGraph StreamPart | WebSocket Event | Direction | Purpose |
-|---------------------|-----------------|-----------|---------|
-| `custom` (via `get_stream_writer()`) | `thinking` | Server -> Client | Agent reasoning trace |
-| `messages` (tool call delta) | `tool_call` | Server -> Client | Tool being invoked |
-| `messages` (tool result) | `tool_result` | Server -> Client | Tool execution result |
-| `messages` (AIMessageChunk) | `chunk` | Server -> Client | Streamed response text |
-| `values` (final state) | `done` | Server -> Client | Workflow complete, final state |
-
-**Memory retrieval flow:**
-
+**WebSocket upgrade flow (critical detail):**
 ```
-Analyze node starts
-       |
-       v
-1. Read working memory from AgentState (messages, plan, scratchpad)
-       |
-       v
-2. Query short-term memory (Redis) by thread_id -> recent conversation summary
-       |
-       v
-3. Query long-term memory (LangGraph Store) by namespace + semantic search
-   - Store.search(namespace=("users", user_id, "memories"), query=user_message)
-   - Returns ranked memories with relevance scores
-       |
-       v
-4. Inject all context into LLM prompt as system/user messages
-       |
-       v
-5. After response, extract learnings -> Store.put() for cross-thread persistence
+Browser sends: Upgrade: websocket, Connection: Upgrade
+      |
+      v
+nginx receives /ws/chat?token=xxx
+      |
+      v
+nginx config:
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_read_timeout 86400s;   # 24h -- prevents Nginx from closing idle WS
+  proxy_buffering off;
+      |
+      v
+backend:8000 receives WebSocket handshake
+      |
+      v
+FastAPI /ws/chat endpoint: validate JWT, accept, register in ConnectionManager
+      |
+      v
+Long-lived bidirectional connection through Nginx
 ```
 
-**Skill loading flow:**
-
+**Skill sandbox flow (Docker socket mount):**
 ```
-Admin uploads skill package (ZIP) via REST API
-       |
-       v
-Skill Manager validates package (manifest, entry point, permissions)
-       |
-       v
-Package stored in MinIO (binary), metadata in PostgreSQL
-       |
-       v
-On enable: Sandbox Executor provisions container with skill dependencies
-       |
-       v
-Skill registers its tools with Tool Registry (name, schema, handler)
-       |
-       v
-Agent Engine can now route tool calls to this skill via Tool Registry
-```
-
-**MCP server connection flow:**
-
-```
-Admin registers MCP server (URL, transport type) via REST API
-       |
-       v
-MCP Manager creates MCP Client instance (1:1 with server)
-       |
-       v
-Client connects via Streamable HTTP (HTTP POST + SSE for responses)
-       |
-       v
-Client calls tools/list -> receives tool definitions with JSON Schema
-       |
-       v
-MCP Manager registers discovered tools in Tool Registry (prefixed by server name)
-       |
-       v
-Agent Engine routes tool calls: registry resolves "mcp__server__tool" -> MCP Client -> JSON-RPC call
-       |
-       v
-Health check: periodic ping, auto-reconnect on failure, status in PostgreSQL
+Backend container starts with -v /var/run/docker.sock:/var/run/docker.sock
+      |
+      v
+SkillSandbox uses docker.from_env() -> connects to host Docker daemon
+      |
+      v
+Skill containers are siblings of the backend container (not children)
+      |
+      v
+Skill containers join the same Docker network (nextflow_default) for DNS resolution
+      |
+      v
+Backend accesses skill container via http://nextflow-skill-{name}:8080
 ```
 
 ## Patterns to Follow
 
-### Pattern 1: LangGraph StateGraph for Agent Orchestration
-**What:** Define the agent workflow as a directed graph where each node is a pure function `(State) -> Partial[State]` and edges (including conditional) control flow. State is a TypedDict or Pydantic model. Reducers control how updates merge (e.g., `add_messages` for message history with ID-based dedup).
+### Pattern 1: Multi-Stage Backend Dockerfile with uv
 
-**When:** Every agent workflow. This IS the Agent Engine.
+**What:** Use a two-stage build. The builder stage installs dependencies using `uv` (matching the existing `uv.lock`). The runtime stage copies only the installed packages and application code.
 
-**Example:**
-```python
-from langgraph.graph import StateGraph, START, END
-from typing import Annotated
-from typing_extensions import TypedDict
-from langgraph.graph.message import add_messages
-from langgraph.checkpoint.postgres import PostgresSaver
+**When:** Backend Dockerfile.
 
-class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]
-    plan: str
-    scratchpad: str
-    tools_to_call: list[dict]
+**Rationale:** The project uses `uv` with `uv.lock` for dependency management (not pip/requirements.txt). The Dockerfile must work with this toolchain.
 
-def analyze(state: AgentState) -> dict:
-    # LLM analyzes user intent, returns plan
-    ...
+```dockerfile
+# ---- Stage 1: Builder ----
+FROM python:3.12-slim AS builder
 
-def plan(state: AgentState) -> dict:
-    # Break plan into tool calls
-    ...
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-def execute(state: AgentState) -> dict:
-    # Run tools, collect results
-    ...
+WORKDIR /app
 
-def reflect(state: AgentState) -> dict:
-    # Evaluate results, decide if more steps needed
-    ...
+# Copy lockfile and project definition first (layer caching)
+COPY pyproject.toml uv.lock ./
 
-def should_continue(state: AgentState) -> str:
-    if state["plan"] and needs_more_work(state):
-        return "execute"
-    return "respond"
+# Install dependencies into a virtual environment
+RUN uv sync --frozen --no-dev --no-install-project
 
-builder = StateGraph(AgentState)
-builder.add_node("analyze", analyze)
-builder.add_node("plan", plan)
-builder.add_node("execute", execute)
-builder.add_node("reflect", reflect)
-builder.add_node("respond", respond)
+# Copy application code
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./
 
-builder.add_edge(START, "analyze")
-builder.add_edge("analyze", "plan")
-builder.add_edge("plan", "execute")
-builder.add_edge("execute", "reflect")
-builder.add_conditional_edges("reflect", should_continue)
-builder.add_edge("respond", END)
+# Install the project itself into the venv
+RUN uv sync --frozen --no-dev
 
-checkpointer = PostgresSaver.from_conn_string(DB_URI)
-graph = builder.compile(checkpointer=checkpointer)
+# ---- Stage 2: Runtime ----
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
+COPY --from=builder /app/app ./app
+COPY --from=builder /app/alembic ./alembic
+COPY --from=builder /app/alembic.ini ./
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"] || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--ws-ping-interval", "20", "--ws-ping-timeout", "20"]
 ```
 
-### Pattern 2: Orchestrator-Worker with Send API for Parallel Tool Execution
-**What:** When the Plan node identifies multiple independent tool calls, use LangGraph's `Send` API to dynamically create parallel worker nodes, each with its own slice of state. Workers execute concurrently, and results are reduced back into the main state.
+**Key decisions:**
+- `uv sync --frozen` respects the lockfile exactly (no floating versions)
+- `--no-dev` excludes pytest and dev dependencies from production image
+- Non-root user (`appuser`) for security -- but see Pattern 5 for Docker socket constraint
+- HEALTHCHECK uses `httpx` (already in dependencies) rather than `curl` (not in slim image)
+- `PYTHONUNBUFFERED=1` ensures logs appear immediately (not buffered)
+- Uvicorn ping/pong args match the existing comment in `main.py` line 244
 
-**When:** Multiple independent tool calls in the Execute phase.
+### Pattern 2: Multi-Stage Frontend Dockerfile with Nginx
 
-**Example:**
-```python
-from langgraph.types import Send
+**What:** Build the React SPA in a Node.js stage, then copy only the dist output into an Nginx image. The Nginx config handles SPA routing (try_files fallback) and proxies API/WebSocket to the backend.
 
-def plan(state: AgentState) -> dict:
-    tool_calls = identify_tool_calls(state)
-    # Dynamically route each tool call to its own worker
-    return {
-        "tools_to_call": tool_calls,
-        "__send__": [Send("tool_worker", {"tool_call": tc}) for tc in tool_calls]
+**When:** Frontend Dockerfile.
+
+```dockerfile
+# ---- Stage 1: Build ----
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build    # outputs to /app/dist
+
+# ---- Stage 2: Nginx with static files + reverse proxy ----
+FROM nginx:1.27-alpine
+
+# Remove default Nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom Nginx config (handles both static files and proxy)
+COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built static files
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**Key decisions:**
+- Node 22 Alpine matches the CLAUDE.md stack (Node 22 LTS)
+- `npm ci` uses the lockfile for reproducible builds (faster and stricter than `npm install`)
+- Final image is ~25MB (Nginx Alpine + static files only, no Node.js)
+- Separate `nginx.conf` file allows easy customization without rebuilding
+
+### Pattern 3: Nginx Configuration for FastAPI + WebSocket + SPA
+
+**What:** A single Nginx server block that routes `/api/v1/*` and `/ws/*` to the backend, serves static files for the React SPA, and handles SPA client-side routing fallback.
+
+**When:** Nginx config file.
+
+```nginx
+upstream backend {
+    server backend:8000;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    # ---- Gzip compression ----
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript
+               text/xml application/xml text/javascript image/svg+xml;
+    gzip_min_length 256;
+
+    # ---- API reverse proxy ----
+    location /api/v1/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # For streaming responses (agent events)
+        proxy_buffering off;
+
+        # Allow large file uploads (skill packages)
+        client_max_body_size 100M;
     }
 
-def tool_worker(state: dict) -> dict:
-    result = execute_tool(state["tool_call"])
-    return {"messages": [ToolMessage(content=result, tool_call_id=state["tool_call"]["id"])]}
+    # ---- Health check endpoint ----
+    location /health {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+    }
+
+    # ---- OpenAPI docs (optional, can be disabled in production) ----
+    location /docs {
+        proxy_pass http://backend;
+    }
+    location /openapi.json {
+        proxy_pass http://backend;
+    }
+
+    # ---- WebSocket proxy ----
+    location /ws/ {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+
+        # Critical: WebSocket upgrade headers
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Long timeouts for persistent WebSocket connections
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+
+        # No buffering for real-time streaming
+        proxy_buffering off;
+    }
+
+    # ---- Static assets (aggressive cache) ----
+    location /assets/ {
+        root /usr/share/nginx/html;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+
+        # Vite outputs hashed filenames: [name]-[hash].[ext]
+        # These are safe to cache aggressively
+    }
+
+    # ---- SPA fallback (all other routes -> index.html) ----
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # No-cache for index.html (contains hashed asset references that may change)
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+
+        try_files $uri $uri/ /index.html;
+    }
+}
 ```
 
-### Pattern 3: Evaluator-Optimizer Loop for Complex Tasks
-**What:** After the Reflect node evaluates execution results, if quality is insufficient, route back to Plan with feedback injected into state. The LLM sees its own critique and produces an improved plan. Use `Command(goto="plan")` to loop back.
+**Why this configuration works with the existing codebase:**
 
-**When:** Multi-step reasoning, complex tool orchestration where first attempt may fail.
+1. The frontend `api-client.ts` uses relative paths (`/api/v1/auth/login`, etc.) -- these work behind any proxy without configuration changes because the Nginx routes them to the backend.
 
-**Example:**
+2. The frontend `use-websocket.ts` constructs WebSocket URLs dynamically from `window.location.protocol` and `window.location.host` -- Nginx's WebSocket proxy makes `/ws/chat` resolve correctly without any frontend code changes.
+
+3. The backend CORS config (`cors_origins: ["http://localhost:5173"]`) will need updating to include the production origin, but in the containerized setup, the browser talks to Nginx (same origin), so CORS is not actually exercised between browser and backend. CORS only matters in development mode.
+
+### Pattern 4: Production docker-compose.yml with Dependency Ordering
+
+**What:** Extend the existing docker-compose.yml with backend and nginx services. Use healthcheck-based dependencies so services start in the correct order.
+
+**When:** Production docker-compose.yml.
+
+```yaml
+services:
+  # ---- Infrastructure (existing, ports modified) ----
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nextflow-postgres
+    # Remove port exposure in production (only internal access)
+    # expose:
+    #   - "5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nextflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-nextflow}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nextflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nextflow
+
+  redis:
+    image: redis:7-alpine
+    container_name: nextflow-redis
+    # Remove port exposure in production
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nextflow
+
+  minio:
+    image: minio/minio:latest
+    container_name: nextflow-minio
+    # Remove port exposure in production (or keep for admin console)
+    ports:
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-nextflow}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nextflow
+
+  # ---- Application (new) ----
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nextflow-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-nextflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nextflow}
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-nextflow}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_SECURE: "false"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY required}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      CORS_ORIGINS: ${CORS_ORIGINS:-[]}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      # Docker socket for skill sandbox (sibling containers)
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - nextflow
+    # Note: no ports exposed -- all traffic goes through nginx
+
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # nginx.conf is in the frontend/nginx/ directory
+    container_name: nextflow-nginx
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    restart: unless-stopped
+    networks:
+      - nextflow
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  nextflow:
+    driver: bridge
+```
+
+**Dependency ordering rationale:**
+
+```
+postgres (healthy) ──+
+redis (healthy)    ──+──> backend (started) ──> nginx (started)
+minio (healthy)    ──+
+```
+
+1. **postgres, redis, minio** start in parallel (no dependencies between them)
+2. **backend** waits for all three to be healthy (condition: service_healthy)
+3. **nginx** waits for backend to start (condition: service_started -- not healthy, because nginx should start even if backend is temporarily unhealthy; Nginx will return 502 until backend is ready)
+
+**Service startup sequence at `docker-compose up`:**
+```
+T+0s   : postgres, redis, minio start
+T+2-5s : postgres, redis, minio pass healthchecks
+T+5s   : backend starts (depends_on conditions met)
+T+5s   : nginx starts (parallel with backend, only needs service_started)
+T+10s  : backend passes its own healthcheck
+T+10s  : nginx begins successfully proxying to backend
+```
+
+### Pattern 5: Docker Socket Mount for Skill Sandbox
+
+**What:** The backend container mounts `/var/run/docker.sock` from the host so the existing `SkillSandbox` class can continue using `docker.from_env()` to spawn skill containers as siblings.
+
+**When:** Always (required for skill system to function).
+
+**How it works with the existing code:**
+
+The `SkillSandbox` class (in `backend/app/services/skill/sandbox.py`) calls `docker.from_env()`. Inside a container, this connects to the Docker daemon via the mounted socket. The spawned skill containers are **siblings** of the backend container, not children -- they run on the host Docker daemon directly.
+
+**Security implications:**
+- Mounting the Docker socket grants the backend container near-root access to the host. This is an accepted trade-off for the skill sandbox feature.
+- The skill containers already use security hardening (`cap_drop ALL`, `no-new-privileges`, `read_only`, `user 1000:1000`, `pids_limit`, `mem_limit`).
+
+**Network connectivity for skill containers:**
+- Skill containers must join the `nextflow` Docker network so the backend can reach them via `http://nextflow-skill-{name}:8080`.
+- The `SkillSandbox.start_service_container()` method creates containers with `network_mode="bridge"` (default). In the containerized deployment, these containers need to be connected to the `nextflow` network explicitly.
+- This requires a modification to `SkillSandbox` to pass `network="nextflow"` when creating containers in a containerized environment.
+
 ```python
-from langgraph.types import Command
-
-def reflect(state: AgentState) -> Command:
-    quality = evaluate_results(state)
-    if quality.score < threshold:
-        return Command(
-            update={"scratchpad": f"Previous attempt scored {quality.score}. Feedback: {quality.feedback}"},
-            goto="plan"
-        )
-    return Command(goto="respond")
+# Modification needed in sandbox.py:
+container = self._docker.containers.run(
+    image="nextflow-skill-base:latest",
+    # ... existing params ...
+    network="nextflow",  # ADD: join the compose network
+    # ... rest unchanged ...
+)
 ```
 
-### Pattern 4: Three-Layer Memory with LangGraph Store
-**What:** Working memory lives in AgentState (ephemeral, per-invocation). Short-term memory uses LangGraph checkpointer keyed by thread_id (conversation history). Long-term memory uses LangGraph Store with semantic search for cross-thread knowledge.
+**Alternative (no code change):** Use the `DOCKER_SOCKET` environment variable and rely on Docker Compose's default network. When `docker-compose up` creates the `nextflow_default` network, containers created via the socket are not automatically added to it. The code change is the cleaner approach.
 
-**When:** All agent interactions. Memory retrieval happens at the start of Analyze node.
+### Pattern 6: Development docker-compose.dev.yml (Infrastructure Only)
 
-**Example:**
-```python
-from langgraph.store.base import BaseStore
+**What:** A separate compose file for development that only starts infrastructure services (postgres, redis, minio). The developer runs backend and frontend locally.
 
-def analyze(state: AgentState, *, store: BaseStore) -> dict:
-    # Long-term: semantic search across all conversations for this user
-    memories = store.search(
-        namespace=("users", state["user_id"], "memories"),
-        query=state["messages"][-1].content
-    )
-    # Short-term: already in state from checkpointer
-    context = format_memories(memories)
-    return {"scratchpad": context}
+**When:** Development workflow.
 
-def respond(state: AgentState, *, store: BaseStore) -> dict:
-    # Persist learnings for future conversations
-    learnings = extract_learnings(state)
-    store.put(
-        namespace=("users", state["user_id"], "memories"),
-        key=f"memory_{uuid4()}",
-        value={"content": learnings, "type": "learning"}
-    )
-    return {"messages": [AIMessage(content=state["response"])]}
+```yaml
+# docker-compose.dev.yml
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nextflow-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: nextflow
+      POSTGRES_PASSWORD: nextflow
+      POSTGRES_DB: nextflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nextflow-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: nextflow-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: nextflow
+      MINIO_ROOT_PASSWORD: nextflow123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
 ```
 
-### Pattern 5: Unified Tool Registry with Strategy Routing
-**What:** A single Tool Registry maintains a unified namespace of all available tools (built-in, skill-derived, MCP-discovered). Each tool entry contains its invocation strategy: direct function call, sandbox RPC, or MCP JSON-RPC. The Agent Engine only interacts with the registry, never with backends directly.
+**Usage:**
+```bash
+# Development: infrastructure only, run backend/frontend locally
+docker compose -f docker-compose.dev.yml up -d
 
-**When:** All tool invocations from the Execute node.
-
-**Example:**
-```python
-class ToolRegistry:
-    def __init__(self):
-        self._tools: dict[str, ToolEntry] = {}
-
-    def register(self, name: str, schema: dict, handler: ToolHandler):
-        self._tools[name] = ToolEntry(name=name, schema=schema, handler=handler)
-
-    async def invoke(self, name: str, params: dict) -> Any:
-        entry = self._tools.get(name)
-        if not entry:
-            raise ToolNotFoundError(name)
-        return await entry.handler.invoke(params)
-
-class ToolHandler(Protocol):
-    async def invoke(self, params: dict) -> Any: ...
-
-class BuiltinHandler: ...    # Direct function call
-class SkillHandler: ...      # Sandbox RPC via HTTP/gRPC
-class MCPHandler: ...        # JSON-RPC via MCP Client
+# Production: everything containerized
+docker compose up -d
 ```
 
-### Pattern 6: WebSocket Streaming with Backpressure
-**What:** FastAPI WebSocket endpoint calls `graph.astream_events(input, config, version="v2")` and maps LangGraph StreamParts to application events. Use an async queue between the LangGraph stream and the WebSocket send to handle backpressure and allow clean disconnection.
+This preserves the existing developer workflow exactly as-is. The existing `docker-compose.yml` is the development file (renamed to `docker-compose.dev.yml`). The new production `docker-compose.yml` adds backend + nginx services.
 
-**When:** Every streaming conversation.
+### Pattern 7: Environment Variable Strategy
 
-**Example:**
-```python
-from fastapi import WebSocket
+**What:** The existing `Settings` class in `backend/app/core/config.py` uses `pydantic-settings` with `.env` file support. In containers, environment variables are passed via docker-compose `environment:` section, which overrides `.env` file defaults.
 
-async def stream_agent_response(websocket: WebSocket, graph, user_input: str, thread_id: str):
-    config = {"configurable": {"thread_id": thread_id}}
-    stream_writer = get_stream_writer()
+**When:** Configuration management.
 
-    async for event in graph.astream_events(
-        {"messages": [HumanMessage(content=user_input)]},
-        config,
-        version="v2"
-    ):
-        kind = event["event"]
-        if kind == "on_chat_model_stream":
-            await websocket.send_json({
-                "type": "chunk",
-                "data": {"content": event["data"]["chunk"].content}
-            })
-        elif kind == "on_tool_start":
-            await websocket.send_json({
-                "type": "tool_call",
-                "data": {"name": event["name"], "args": event["data"].get("input")}
-            })
-        # ... map other events
+**Key changes to defaults for containerized deployment:**
+
+| Variable | Local Default | Container Value | Reason |
+|----------|--------------|-----------------|--------|
+| `database_url` | `localhost:5432` | `postgres:5432` | Docker internal DNS |
+| `redis_url` | `localhost:6380` | `redis:6379` | Docker internal DNS, standard port |
+| `minio_endpoint` | `localhost:9000` | `minio:9000` | Docker internal DNS |
+| `cors_origins` | `["http://localhost:5173"]` | `[]` (empty) | Nginx is same-origin; no CORS needed |
+| `ollama_base_url` | `http://localhost:11434` | `http://host.docker.internal:11434` | Access host Ollama from container |
+
+**Frontend environment:** No changes needed. The frontend already uses relative URLs (`/api/v1/*`, `/ws/chat`) which resolve to the Nginx origin automatically.
+
+**Template file:**
+```bash
+# .env.example
+POSTGRES_PASSWORD=change-me-in-production
+MINIO_ROOT_PASSWORD=change-me-in-production
+JWT_SECRET_KEY=change-me-in-production
+OPENAI_API_KEY=sk-...
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+LOG_LEVEL=INFO
+NGINX_PORT=80
+MINIO_CONSOLE_PORT=9001
 ```
 
-### Pattern 7: MCP Multi-Server Client Management
-**What:** MCP Manager maintains a pool of MCP Client instances, each bound to one MCP server via Streamable HTTP transport. Tool discovery aggregates from all connected servers with namespacing (`server_name.tool_name`). Health checks use ping messages. Reconnection on transport failure with exponential backoff.
+### Pattern 8: Database Migration at Container Startup
 
-**When:** Always. Every registered MCP server gets a persistent client.
+**What:** Run Alembic migrations before the FastAPI application starts. Use an entrypoint script that runs migrations then exec's uvicorn.
 
-**Example:**
-```python
-class MCPManager:
-    def __init__(self, tool_registry: ToolRegistry):
-        self._clients: dict[str, MCPClient] = {}
-        self._registry = tool_registry
+**When:** Backend container startup.
 
-    async def register_server(self, server_config: MCPServerConfig):
-        client = MCPClient(server_config)
-        await client.connect()
-        tools = await client.list_tools()
-        for tool in tools:
-            namespaced_name = f"mcp__{server_config.name}__{tool.name}"
-            self._registry.register(
-                namespaced_name,
-                schema=tool.inputSchema,
-                handler=MCPHandler(client, tool.name)
-            )
-        self._clients[server_config.name] = client
+```bash
+#!/bin/bash
+# backend/entrypoint.sh
+set -e
 
-    async def health_check_loop(self):
-        for name, client in self._clients.items():
-            if not await client.ping():
-                await self._reconnect(name, client)
+echo "Running database migrations..."
+alembic upgrade head
+
+echo "Starting application..."
+exec uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --ws-ping-interval 20 \
+    --ws-ping-timeout 20
 ```
+
+**Why not a separate migration container:** Running migrations in the same container as the application avoids race conditions with multiple backend replicas and keeps the compose file simple. The `exec` ensures the uvicorn process receives signals (SIGTERM for graceful shutdown).
+
+**Important:** The existing `alembic/env.py` reads `settings.database_url` from pydantic-settings, which reads from the `DATABASE_URL` environment variable. In the container, this is set to `postgres:5432` (the Docker network hostname). No code changes needed.
+
+### Pattern 9: Volume Strategy
+
+**What:** Persistent data (database, Redis, MinIO) uses named Docker volumes. Application containers are stateless and ephemeral.
+
+**When:** All environments.
+
+| Data | Volume | Type | Backup Strategy |
+|------|--------|------|-----------------|
+| PostgreSQL data | `postgres_data` | Named volume | `pg_dump` via cron or backup container |
+| Redis data | `redis_data` | Named volume | AOF persistence (Redis config). Data is cache-grade (safe to lose) |
+| MinIO data | `minio_data` | Named volume | `mc mirror` to S3 or backup volume |
+| Backend application | None | Stateless | Rebuilt from image on deploy |
+| Frontend static files | None | Baked into image | Rebuilt from image on deploy |
+| Skill packages | In MinIO volume | Via MinIO | Covered by MinIO backup |
+
+**Redis persistence note:** Add `command: redis-server --appendonly yes` to the Redis service configuration for durability across restarts. The current config uses the default (no persistence), which means Redis data (session cache, short-term memory) is lost on restart. This is acceptable for v1 but should be enabled for production.
+
+### Pattern 10: Nginx SPA Routing with Vite Hashed Assets
+
+**What:** Vite produces hashed asset filenames (e.g., `assets/index-AbCd1234.js`). Nginx caches these aggressively with `expires 1y; immutable`. The `index.html` is served with `no-cache` so browsers always fetch the latest version with updated asset references.
+
+**When:** Frontend serving.
+
+**Why this works:** The existing `vite.config.ts` already configures the Vite build. Vite 7 automatically generates hashed filenames for JS/CSS in production builds. The `try_files $uri $uri/ /index.html` directive handles React Router client-side routing (the app uses `react-router` per `package.json`).
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: LLM Direct in WebSocket Handler
-**What:** Calling LLM APIs directly inside FastAPI route handlers without LangGraph orchestration.
-**Why bad:** Loses state persistence, replay capability, streaming unification, and human-in-the-loop support. Turns the Agent Engine into ad-hoc procedural code.
-**Instead:** Always route through the compiled LangGraph StateGraph. The graph provides checkpointing, streaming, and interrupt/resume for free.
+### Anti-Pattern 1: Exposing Backend Port Directly
 
-### Anti-Pattern 2: Flat Tool Namespace Without Routing Strategy
-**What:** Registering all tools (built-in, skill, MCP) as flat function references with no invocation strategy differentiation.
-**Why bad:** Skill tools need sandbox isolation. MCP tools need JSON-RPC serialization. Built-in tools are direct calls. Mixing invocation patterns in the Execute node couples it to every backend type.
-**Instead:** Tool Registry with strategy pattern. Each entry carries its handler type. Execute node calls `registry.invoke(name, params)` uniformly.
+**What:** Publishing the backend's port 8000 to the host alongside the Nginx port 80.
+**Why bad:** Bypasses Nginx's rate limiting, SSL termination, and security headers. Users (or misconfigured frontend code) could hit the backend directly, circumventing proxy protections.
+**Instead:** Backend has no `ports:` section in production compose. All traffic flows through Nginx.
 
-### Anti-Pattern 3: In-Memory State Without Checkpointing
-**What:** Using `InMemorySaver` or no checkpointer in production, storing conversation state only in process memory.
-**Why bad:** Server restart loses all conversations. Cannot scale horizontally (state not shared). No replay, no time travel, no human-in-the-loop.
-**Instead:** `PostgresSaver` for production. Thread_id maps to session_id. Every super-step persisted.
+### Anti-Pattern 2: Two Separate Nginx Containers
 
-### Anti-Pattern 4: Single LLM Client Without Routing
-**What:** Hardcoding one LLM provider (e.g., only OpenAI) with no abstraction for model switching.
-**Why bad:** Model lock-in. Cannot route different tasks to different models (e.g., cheap model for analysis, capable model for code generation). No fallback on provider outage.
-**Instead:** LangChain's `BaseChatModel` abstraction. Router that selects model by task type, cost budget, or user preference. Fallback chain for resilience.
+**What:** One Nginx container for frontend static files, another Nginx (or different reverse proxy) for API/WebSocket routing.
+**Why bad:** Adds latency (extra network hop from frontend-Nginx to backend-Nginx), doubles configuration surface, complicates SSL certificate management, and adds a container with minimal benefit.
+**Instead:** Single Nginx container handles both static files and reverse proxy. This is the standard pattern for SPA + API deployments.
 
-### Anti-Pattern 5: Synchronous Tool Execution in Agent Loop
-**What:** Awaiting each tool call sequentially when multiple tools are independent.
-**Why bad:** N independent tool calls take N * avg_latency instead of avg_latency. Poor user experience with long waits.
-**Instead:** LangGraph `Send` API for parallel worker nodes. Async tool execution with `asyncio.gather` within the Execute node when tools are independent.
+### Anti-Pattern 3: Embedding Frontend in Backend Container
 
-### Anti-Pattern 6: Unscoped Memory Retrieval
-**What:** Dumping entire conversation history + all stored memories into every LLM call without relevance filtering.
-**Why bad:** Token waste, increased latency, degraded LLM output quality from noise. Costs scale linearly with history.
-**Instead:** Semantic search via LangGraph Store with relevance thresholds. Sliding window for short-term memory (last N messages or token-budgeted summary). Retrieve only what the current query needs.
+**What:** Serving frontend static files from FastAPI using `StaticFiles` mount.
+**Why bad:** Couples frontend and backend build cycles. Frontend changes require backend rebuild. FastAPI is not optimized for static file serving. Cannot scale frontend and backend independently.
+**Instead:** Separate Dockerfiles. Frontend builds into Nginx image. Backend stays pure Python.
 
-## Scalability Considerations
+### Anti-Pattern 4: Docker-in-Docker for Skill Sandbox
 
-| Concern | At 100 users | At 10K users | At 100K+ users |
-|---------|--------------|--------------|----------------|
-| **WebSocket connections** | Single FastAPI process, in-memory connection map | Multiple FastAPI workers behind load balancer with sticky sessions or Redis pub/sub for cross-worker messaging | Dedicated WebSocket gateway (e.g., dedicated ASGI servers), Redis Streams for event distribution |
-| **LangGraph execution** | Single process, `PostgresSaver` for state | Celery workers for long-running graphs, async execution for streaming graphs. Postgres connection pooling (pgbouncer) | Horizontally scaled LangGraph Server (managed) or custom worker fleet with shared PostgresSaver |
-| **LLM API rate limits** | Unlikely to hit limits | Request queue with priority levels, rate limit tracking per provider, model fallback chains | Multi-provider load balancing, local model fallback (vLLM/Ollama) for overflow, token budget management per user tier |
-| **MCP server connections** | Pool of persistent connections, negligible overhead | Connection pooling per server, lazy connect on first tool call, idle timeout | MCP gateway service with shared connection pool, gRPC internal routing |
-| **Vector search (long-term memory)** | Single Qdrant/Milvus node, brute-force search | Indexed collections per tenant/user namespace, HNSW index tuning | Sharded vector DB, read replicas, embedding cache to avoid re-embedding common queries |
-| **Skill sandbox execution** | Docker containers on same host, serial execution | Container pool with pre-warmed images, resource limits per skill | Kubernetes-based sandbox with auto-scaling, job queue with priority, GPU access for ML skills |
-| **PostgreSQL** | Single instance adequate | Read replicas for queries, connection pooling, partitioned conversations table | Sharded by user_id, dedicated analytics replica, TimescaleDB for metrics |
+**What:** Running a Docker daemon inside the backend container (`--privileged` with `docker:dind`).
+**Why bad:** Security nightmare (privileged mode), complex networking (nested Docker), poor performance, difficult to debug. The skill containers would be grandchildren of the host daemon.
+**Instead:** Mount the host Docker socket. Skill containers are siblings of the backend on the host daemon. This is simpler, more secure (no privileged mode), and uses the existing `docker.from_env()` code unchanged.
+
+### Anti-Pattern 5: Hardcoded URLs in Frontend
+
+**What:** Setting `VITE_API_URL` or `VITE_WS_URL` to `http://backend:8000` at build time.
+**Why bad:** Container hostnames (`backend`) are internal DNS names not resolvable from the browser. Would require different builds for local development vs containerized deployment.
+**Instead:** The existing frontend code already uses relative URLs (`/api/v1/*`, `ws://${window.location.host}/ws/chat`). This works identically in both development (Vite proxy) and production (Nginx proxy). No frontend code changes needed.
+
+### Anti-Pattern 6: Using `latest` Tag for Skill Base Image
+
+**What:** The `SkillSandbox` references `nextflow-skill-base:latest`.
+**Why bad:** `latest` is a floating tag. Different hosts may have different versions. Builds are not reproducible.
+**Instead:** Pin the skill base image tag (e.g., `nextflow-skill-base:1.0.0`). This is existing behavior and should be addressed in a future skill versioning milestone, not this containerization milestone.
+
+## Integration Points with Existing Architecture
+
+### New Components
+
+| Component | Files to Create | Purpose |
+|-----------|----------------|---------|
+| Backend Dockerfile | `backend/Dockerfile` | Multi-stage build for FastAPI |
+| Backend entrypoint | `backend/entrypoint.sh` | Run Alembic migrations + start uvicorn |
+| Backend .dockerignore | `backend/.dockerignore` | Exclude `__pycache__`, `.env`, tests, venv |
+| Frontend Dockerfile | `frontend/Dockerfile` | Multi-stage build: Node -> Nginx |
+| Frontend .dockerignore | `frontend/.dockerignore` | Exclude `node_modules`, `dist`, `.env` |
+| Nginx config | `frontend/nginx/nginx.conf` | Reverse proxy + static file serving |
+| Production compose | `docker-compose.yml` (replace existing) | Full stack with backend + nginx |
+| Dev compose | `docker-compose.dev.yml` | Infrastructure only (current compose content) |
+| Env template | `.env.example` | Documented configuration template |
+| Deploy docs | (optional) | Production deployment guide |
+
+### Modified Components
+
+| Component | File | Change | Why |
+|-----------|------|--------|-----|
+| SkillSandbox | `backend/app/services/skill/sandbox.py` | Add `network` parameter to container creation | Skill containers must join compose network for DNS resolution |
+| CORS config | `backend/app/core/config.py` | Change `cors_origins` default | Not strictly needed (same-origin via Nginx), but the default should not hardcode `localhost:5173` for production |
+| Redis port | `docker-compose.yml` | Change `6380:6379` to `6379:6379` | The non-standard port 6380 was for local dev to avoid conflict with system Redis. In containers, use standard port. Only applies to dev compose. |
+
+### Unchanged Components
+
+| Component | Why No Change Needed |
+|-----------|---------------------|
+| Frontend `api-client.ts` | Uses relative URLs (`/api/v1/*`) -- works behind any proxy |
+| Frontend `use-websocket.ts` | Uses `window.location.host` -- resolves to Nginx origin |
+| Backend `main.py` | Application code is environment-agnostic; config via env vars |
+| Backend `config.py` | Pydantic-settings reads env vars, works in containers |
+| Backend `alembic/env.py` | Reads `settings.database_url` from env, no code change |
+| Backend `session.py` | Engine configured from `settings.database_url`, no code change |
+| Backend `health.py` | `/health` endpoint works as-is for container healthchecks |
+| All backend services | No code changes needed (auth, agent engine, MCP, memory) |
 
 ## Build Order (Dependency-Aware)
 
-Components must be built in this order because of hard dependencies:
+Based on the analysis, the containerization milestone should proceed in this order:
 
 ```
-Phase 1: Foundation (no dependencies)
-  1.1 PostgreSQL schema (users, conversations, skills, mcp_servers, tools)
-  1.2 Redis setup (session store, cache)
-  1.3 FastAPI project skeleton (project structure, config, logging)
-  1.4 JWT auth + RBAC middleware
+Phase 1: Preserve existing workflow (no risk of breakage)
+  1.1 Rename existing docker-compose.yml to docker-compose.dev.yml
+  1.2 Verify docker-compose.dev.yml works identically to current setup
+  1.3 Create .env.example
 
-Phase 2: Agent Engine Core (depends on 1.1, 1.3)
-  2.1 LangGraph StateGraph definition (AgentState, nodes, edges)
-  2.2 PostgresSaver checkpointer integration
-  2.3 Basic LLM integration via LangChain (single model)
-  2.4 Tool Registry skeleton (registration interface, built-in tools)
+Phase 2: Backend containerization (backend must work standalone first)
+  2.1 Create backend/.dockerignore
+  2.2 Create backend/Dockerfile (multi-stage with uv)
+  2.3 Create backend/entrypoint.sh (Alembic migrations + uvicorn)
+  2.4 Test: docker build + run backend container with dev infrastructure
+  2.5 Modify SkillSandbox sandbox.py to accept network parameter
 
-Phase 3: Communication Layer (depends on 2.1)
-  3.1 REST API endpoints (CRUD for conversations, agents, settings)
-  3.2 WebSocket endpoint with LangGraph streaming integration
-  3.3 Event mapping (StreamPart -> WebSocket events)
+Phase 3: Frontend containerization + Nginx (needs working backend)
+  3.1 Create frontend/.dockerignore
+  3.2 Create frontend/nginx/nginx.conf
+  3.3 Create frontend/Dockerfile (multi-stage: Node build + Nginx)
+  3.4 Test: docker build frontend, verify static files served correctly
 
-Phase 4: Memory System (depends on 2.1, 2.2, 1.2)
-  4.1 Qdrant/Milvus setup and collection schemas
-  4.2 LangGraph Store integration for long-term memory
-  4.3 Short-term memory manager (Redis-based conversation summaries)
-  4.4 Context injection in Analyze node
+Phase 4: Production docker-compose.yml (integration)
+  4.1 Create new docker-compose.yml (all services + networking)
+  4.2 Test: docker-compose up (full stack)
+  4.3 Test: WebSocket streaming through Nginx
+  4.4 Test: Skill sandbox (Docker socket mount + network)
+  4.5 Test: Backend healthcheck + service dependency ordering
 
-Phase 5: MCP Integration (depends on 2.4)
-  5.1 MCP Client implementation (Streamable HTTP transport)
-  5.2 MCP Manager (server registration, tool discovery, health check)
-  5.3 MCP tool registration in Tool Registry
-  5.4 MCP admin API endpoints
-
-Phase 6: Skill System (depends on 2.4, 1.3)
-  6.1 Skill package format and validation
-  6.2 MinIO integration for skill storage
-  6.3 Sandbox executor (Docker-based isolation)
-  6.4 Skill lifecycle management (upload, enable, disable, hot-update)
-  6.5 Skill tool registration in Tool Registry
-
-Phase 7: Frontend (can start in parallel with Phase 3, fully usable after Phase 3)
-  7.1 Project setup (Vite + React 18 + TypeScript + shadcn/ui + Zustand)
-  7.2 Auth UI (login/register)
-  7.3 Conversation UI (message list, input, streaming display)
-  7.4 Thinking/tool call visualization
-  7.5 Agent configuration UI
-  7.6 Skill management UI
-  7.7 MCP management UI
-
-Phase 8: Advanced Agent Patterns (depends on 2-6)
-  8.1 Parallel tool execution via Send API
-  8.2 Evaluator-optimizer loops for complex tasks
-  8.3 Multi-LLM routing and fallback chains
-  8.4 Human-in-the-loop interrupts
+Phase 5: Hardening and documentation
+  5.1 Resource limits (mem_limit, cpus) for each service
+  5.2 Restart policies
+  5.3 Production deployment guide
+  5.4 SSL/TLS configuration notes (for future HTTPS setup)
 ```
 
-Key dependency rationale:
-- Agent Engine (Phase 2) is the critical path -- everything else depends on it
-- Tool Registry must exist before MCP and Skill systems can register their tools
-- Memory System requires both the graph (for Store integration) and Redis (for short-term) to be ready
-- Frontend can begin scaffold in parallel with backend work but needs REST/WS APIs (Phase 3) to become functional
-- Advanced patterns (Phase 8) require all subsystems to be operational for end-to-end testing
+**Ordering rationale:**
+- Phase 1 first because renaming the compose file is zero-risk and ensures developers can continue working
+- Phase 2 before Phase 3 because the frontend Nginx config needs a running backend to test proxy rules
+- Phase 4 integrates everything and validates the full stack
+- Phase 5 is polish that doesn't block the "it works" milestone
+
+## Scalability Considerations
+
+| Concern | Single Host (v1) | Multi-Host (v2+) |
+|---------|-------------------|-------------------|
+| **Backend replicas** | Single container, sufficient for MVP | `docker-compose up --scale backend=3` with Nginx load balancing. WebSocket sessions need sticky sessions or Redis pub/sub (already implemented) |
+| **Nginx** | Single container | Redundant Nginx with keepalived VIP, or cloud load balancer |
+| **PostgreSQL** | Single container, named volume | External managed DB (RDS/CloudSQL) or Postgres replicas |
+| **Skill sandbox** | Docker socket mount on same host | Kubernetes-based sandbox with dedicated worker nodes |
+| **Static files** | Baked into Nginx image | CDN (CloudFront, Cloudflare) for static assets, Nginx for API only |
+| **SSL/TLS** | Not in v1 scope | Nginx with certbot/Let's Encrypt or cloud-managed certificates |
 
 ## Sources
 
-- LangGraph Graph API: https://docs.langchain.com/oss/python/langgraph/graph-api (HIGH confidence -- official docs)
-- LangGraph Workflow Patterns: https://docs.langchain.com/oss/python/langgraph/workflows-agents (HIGH confidence -- official docs)
-- LangGraph Persistence & Store: https://docs.langchain.com/oss/python/langgraph/persistence (HIGH confidence -- official docs)
-- LangGraph Streaming v2: https://docs.langchain.com/oss/python/langgraph/streaming (HIGH confidence -- official docs)
-- MCP Architecture: https://modelcontextprotocol.io/docs/concepts/architecture (HIGH confidence -- official spec)
-- MCP Transports: https://modelcontextprotocol.io/docs/concepts/transports (HIGH confidence -- official spec)
-- MCP Tools: https://modelcontextprotocol.io/docs/concepts/tools (HIGH confidence -- official spec)
-- MCP Resources: https://modelcontextprotocol.io/docs/concepts/resources (HIGH confidence -- official spec)
-- Skill sandboxing patterns: MEDIUM confidence -- based on general container isolation best practices, not NextFlow-specific
-- Multi-LLM routing: MEDIUM confidence -- LangChain router chains are documented but production patterns are community-derived
+- Existing codebase analysis: `docker-compose.yml`, `backend/app/core/config.py`, `backend/app/main.py`, `backend/app/services/skill/sandbox.py`, `frontend/vite.config.ts`, `frontend/src/lib/api-client.ts`, `frontend/src/hooks/use-websocket.ts` (HIGH confidence -- direct code analysis)
+- Docker multi-stage build patterns: Docker official documentation (HIGH confidence -- well-established patterns)
+- Nginx WebSocket proxy: Nginx official documentation, `proxy_set_header Upgrade` + `Connection "upgrade"` pattern (HIGH confidence -- standard configuration)
+- Nginx SPA routing: `try_files $uri $uri/ /index.html` pattern for client-side routing (HIGH confidence -- standard practice)
+- Docker socket mount for sibling containers: Docker documentation, widely used in CI/CD and sandbox patterns (HIGH confidence)
+- `uv` Docker integration: `ghcr.io/astral-sh/uv` image and `uv sync` documentation (HIGH confidence -- official Astral documentation)
+- Vite hashed asset output: Vite documentation for production builds (HIGH confidence)

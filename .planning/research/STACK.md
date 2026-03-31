@@ -1,281 +1,619 @@
-# Technology Stack
+# Technology Stack: Docker Containerization & Production Deployment
 
 **Project:** NextFlow -- Universal Agent Platform
-**Researched:** 2026-03-28
+**Milestone:** v1.1 Docker Deployment Readiness
+**Researched:** 2026-03-31
+
+## Scope
+
+This document covers ONLY the new stack additions needed for containerizing the existing NextFlow application services and configuring production deployment. The existing application stack (FastAPI 0.135, React 19, Vite 7, PostgreSQL 16, Redis 7, MinIO, LangGraph 1.1) is validated and not re-researched.
+
+**Existing state:** Docker Compose runs infrastructure only (PostgreSQL, Redis, MinIO). No app services are containerized. No Dockerfiles exist. No Nginx config exists.
+
+---
 
 ## Recommended Stack
 
-### Runtime & Language
+### Base Images
+
+| Image | Version | Purpose | Why | Confidence |
+|-------|---------|---------|-----|------------|
+| python | 3.12-slim (bookworm) | Backend runtime base | glibc-based, compatible with all Python packages (asyncpg, cryptography, psycopg). Alpine uses musl which breaks pre-built wheels for asyncpg and cryptography, forcing source compilation that inflates build time 10x and image size. Slim is ~50MB vs Alpine's ~20MB but saves hours of build debugging. Pin to `3.12-slim-bookworm` for reproducibility. | HIGH |
+| node | 22-alpine | Frontend build stage | Build-only image (not shipped). Alpine is fine for Node.js because npm packages distribute pre-built binaries for both glibc and musl. Smaller download (~180MB vs ~350MB for node:22-slim). Only runs `npm ci && npm run build`, so compatibility risk is near-zero. | HIGH |
+| nginx | 1.27-alpine | Reverse proxy + static file server | Reverse proxy for FastAPI backend, static file host for React SPA, WebSocket upgrade routing. Alpine variant is ~25MB. Nginx on Alpine has no compatibility concerns (no Python or Node.js involved). Pin 1.27 minor line (stable mainline as of March 2026). | HIGH |
+| pgvector/pgvector | pg16 | PostgreSQL + pgvector extension | Already in use. No change needed. pgvector bundled, avoids separate extension install. | HIGH |
+| redis | 7-alpine | Cache + session + pub/sub broker | Already in use. No change needed. | HIGH |
+| minio/minio | latest | S3-compatible object storage | Already in use. No change needed. | HIGH |
+
+### Production Server (Backend)
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| Python | 3.12+ | Backend runtime | LangGraph requires >=3.10. Python 3.12 is the sweet spot: mature, fast (free-threading experiments in 3.13 are unstable), and all libraries support it. Pin to 3.12 for stability, allow 3.13 opt-in. | HIGH |
-| Node.js | 22 LTS | Frontend runtime | Vite 7/8, React 19, and shadcn/ui tooling all target Node 22 LTS. Long-term support through April 2027. | HIGH |
-| TypeScript | ~5.7 | Frontend type safety | Strict typing catches integration errors between Zustand stores, WebSocket events, and API responses. The ~5.7 range matches current Vite/React tooling expectations. | HIGH |
+| Gunicorn | 23.x | Process manager for Uvicorn workers | Gunicorn provides: (1) multi-worker process management with `uvicorn.workers.UvicornWorker` class, (2) automatic worker restart on crash, (3) graceful reload via HUP signal, (4) `max_requests` to prevent memory leaks in long-running async processes. A single Uvicorn process cannot utilize multiple CPU cores. | HIGH |
+| uvicorn[standard] | 0.34+ | ASGI server (worker class) | Already a dependency. The `[standard]` extras include `uvloop` (faster event loop) and `httptools` (faster HTTP parsing). Used as Gunicorn worker class, not standalone. | HIGH |
 
-### Core Framework
-
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| FastAPI | 0.135.x | API gateway, WebSocket server | Async-native, Pydantic v2 validation, native WebSocket support, automatic OpenAPI docs. v0.135 adds Starlette 1.0 support and native SSE. The fastest-growing Python web framework. | HIGH |
-| LangGraph | 1.1.x | Agent orchestration engine | The core differentiator. Stateful graph workflow with checkpointing, conditional edges, loops, and streaming. v1.1.x is production-stable (reached 1.0 in Oct 2025). No viable alternative for this use case. | HIGH |
-| LangChain | latest (core 1.2.x) | LLM abstraction layer | Required for multi-provider model switching (OpenAI, Anthropic, Ollama). Provides `BaseChatModel` interface, tool call normalization, and streaming primitives. LangGraph depends on it. | HIGH |
-| React | 19.x | Frontend UI framework | React 19 is current (v19.2.4 on npm). The PROJECT.md specifies React 18, but React 19 is backward-compatible and provides Server Components, Actions, and improved suspense. No reason to start a new project on 18. | HIGH |
-| Vite | 7.x | Frontend build tool | Vite 7.3.1 is the established stable. Vite 8.0.1 was released days ago (March 2026) and may have ecosystem plugin incompatibilities. Use Vite 7 for production stability, upgrade to 8 after ecosystem catches up. | HIGH |
-
-### Database
-
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| PostgreSQL | 16 | Primary relational database | Business data (users, conversations, agents, skills, MCP servers, tools). LangGraph `PostgresSaver` for checkpoint persistence. Mature, reliable, excellent Python drivers via SQLAlchemy + asyncpg. v16 has performance improvements over v15. | HIGH |
-| Redis | 7.x | Cache, session store, Celery broker | Short-term memory (conversation context windows). Celery task broker (separate db index from cache). Session storage. Pub/sub for cross-worker WebSocket messaging at scale. | HIGH |
-| Qdrant | 1.x | Vector database (long-term memory) | Chosen over Milvus for three reasons: (1) qdrant-client has first-class async Python support with `async_qdrant_client`, critical for FastAPI's async model; (2) simpler operational model -- single binary or Docker container vs Milvus's multi-component architecture; (3) LangChain and LangGraph have native Qdrant integrations. Milvus is better at massive scale (100M+ vectors) but Qdrant handles millions comfortably. | MEDIUM |
-
-### Infrastructure
-
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| Celery | 5.6.x | Distributed task queue | Async processing for long-running tasks: skill packaging, batch embedding, report generation. v5.6 adds Python 3.14 support and critical memory leak fixes. Redis as broker (already in stack). | HIGH |
-| MinIO | latest | Object storage | Skill packages (ZIP files), uploaded documents for RAG. S3-compatible API means migration to AWS S3 is trivial if needed. Self-hosted avoids cloud vendor lock-in. | HIGH |
-| Docker | 27.x | Containerization | Skill sandbox execution (isolated containers with resource limits). Service orchestration via Docker Compose for development. Production-ready for Kubernetes deployment. | HIGH |
-| SQLAlchemy | 2.x | ORM, database migrations | Async support via `sqlalchemy[asyncio]` + asyncpg. Alembic for schema migrations. Declarative models with Pydantic-compatible type annotations. | HIGH |
-| Alembic | 1.14+ | Database migration tool | Standard for SQLAlchemy projects. Auto-generates migration scripts from model changes. | HIGH |
-
-### Supporting Libraries -- Backend
+### Supporting Libraries -- Containerization
 
 | Library | Version | Purpose | When to Use | Confidence |
 |---------|---------|---------|-------------|------------|
-| langchain-openai | latest | OpenAI/Azure LLM integration | Primary LLM provider adapter. Use for GPT-4, GPT-4o, Azure OpenAI endpoints. | HIGH |
-| langchain-anthropic | latest | Anthropic LLM integration | Secondary LLM provider. Use for Claude models. Validates multi-provider abstraction. | HIGH |
-| langchain-community | latest | Ollama, vLLM integration | Local model support. Use for Ollama (development) and vLLM (production local inference). | HIGH |
-| langgraph-checkpoint-postgres | latest | LangGraph PostgreSQL checkpointer | State persistence for agent workflows. `PostgresSaver.from_conn_string()`. Required for conversation resumption and time-travel debugging. | HIGH |
-| langgraph-store | latest | LangGraph Store (long-term memory) | Cross-thread semantic memory persistence. `store.search()` and `store.put()` for user-scoped knowledge. Replaces custom vector DB integration for long-term memory. | MEDIUM |
-| mcp | 1.26.x | MCP SDK (Model Context Protocol) | MCP client implementation. FastMCP for server-side, streamable HTTP transport. Tool discovery, invocation, and session management. `streamable_http_client` for connecting to external MCP servers. | HIGH |
-| python-jose | 3.3+ | JWT token encoding/decoding | Authentication. Access tokens + refresh tokens. RS256 algorithm. | HIGH |
-| passlib | 1.7+ | Password hashing | User registration/login. bcrypt backend. | HIGH |
-| pydantic | 2.x (via FastAPI) | Data validation, settings | API request/response models, configuration management. FastAPI already depends on Pydantic v2. Use `BaseModel` for all schemas. | HIGH |
-| uvicorn | 0.34+ | ASGI server | FastAPI runtime. Use `--workers` for multi-process. Standard production setup. | HIGH |
-| httpx | 0.28+ | Async HTTP client | MCP server connections (when not using SDK transport), external API calls, skill sandbox communication. Supports HTTP/2. | HIGH |
-| structlog | 24.x | Structured logging | JSON-formatted logs for production. Correlation IDs, request tracing. Better than stdlib logging for microservices. | MEDIUM |
-| asyncpg | 0.30+ | Async PostgreSQL driver | Direct async DB access for SQLAlchemy. Faster than psycopg2 for concurrent queries. | HIGH |
-| redis | 5.x | Async Redis client | `redis.asyncio` for cache, session store, and Celery broker connection. | HIGH |
-| qdrant-client | 1.x | Qdrant vector DB client | `AsyncQdrantClient` for vector operations. Used by LangChain Qdrant integration and directly for custom embedding pipelines. | MEDIUM |
-| minio | 7.x | MinIO Python client | Skill package upload/download, document storage. Presigned URL generation. | HIGH |
-| docker | 7.x | Docker SDK for Python | Skill sandbox management. Container lifecycle (create, start, stop, remove). Resource limit enforcement. | HIGH |
+| gunicorn | 23.x | WSGI/ASGI process manager | Production backend. `gunicorn -k uvicorn.workers.UvicornWorker`. NOT for development. | HIGH |
+| docker | 7.x (existing) | Docker SDK for Python | Already installed for skill sandbox. Used inside backend container via Docker socket mount. | HIGH |
 
-### Supporting Libraries -- Frontend
+### Docker Compose Additions
 
-| Library | Version | Purpose | When to Use | Confidence |
-|---------|---------|---------|-------------|------------|
-| shadcn/ui | latest | Component library (Radix + TailwindCSS) | All UI components. Not an npm package -- installed via CLI (`npx shadcn@latest init`). Provides accessible, customizable components built on Radix UI primitives. Copy-paste model means full control. | HIGH |
-| Zustand | 5.x | State management | Client-side state. Use slice pattern from day one (separate stores for chat, skills, MCP, agent config). `useShallow` for multi-field selectors. Middleware: `devtools` (outermost), `persist` (for user preferences). | HIGH |
-| TailwindCSS | 4.x | Utility-first CSS | Required by shadcn/ui. v4 uses CSS-native configuration (`@theme` in CSS) instead of `tailwind.config.js`. | HIGH |
-| react-markdown | 9.x | Markdown rendering | LLM response display. Supports code block syntax highlighting via rehype plugins. | HIGH |
-| remark-gfm | 4.x | GitHub-flavored markdown | Tables, strikethrough, task lists in LLM responses. Plugin for react-markdown. | HIGH |
-| rehype-highlight | 7.x | Code syntax highlighting | Code blocks in LLM responses. Uses highlight.js under the hood. | MEDIUM |
-| @tanstack/react-query | 5.x | Server state management | API data fetching, caching, and synchronization. Complements Zustand (Zustand for client state, React Query for server state). | HIGH |
+| Service | Image/Build | Purpose | Why Separate Service | Confidence |
+|---------|-------------|---------|---------------------|------------|
+| backend | build from `backend/Dockerfile` | FastAPI application | Containerized app service. Needs Docker socket mount for skill sandbox. | HIGH |
+| frontend | build from `frontend/Dockerfile` | Nginx serving React SPA + reverse proxy | Two-stage: Node.js builds SPA, Nginx serves it and proxies API/WS to backend. Single external port (80/443). | HIGH |
 
-## Alternatives Considered
+---
 
-### Database -- Vector Store
+## Dockerfile Patterns
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| **Qdrant** | Milvus | Milvus requires etcd, MinIO, and multiple service components even in standalone mode. Qdrant is a single binary. Milvus's Python client lacks first-class async support. Milvus wins at 100M+ vector scale, but NextFlow will not reach that for v1/v2. |
-| **Qdrant** | ChromaDB | Chroma is designed for prototyping, not production. No production-grade deployment tooling. Poor performance above 1M vectors. LangChain integration is less mature. |
-| **Qdrant** | pgvector | pgvector (PostgreSQL extension) avoids adding a new database to the stack. However, its HNSW implementation is slower than Qdrant's, and it does not support filtering + vector search as efficiently. Adds write amplification to the primary database. Revisit if operational simplicity is prioritized over search quality. |
+### Backend Dockerfile: Multi-Stage Build
 
-### State Management
+The backend Dockerfile has three stages:
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| **Zustand** | Redux Toolkit | Redux adds boilerplate (actions, reducers, slices, middleware configuration) for marginal benefit at this scale. Zustand's API is 5x more concise. No need for Redux's devtools middleware superiority -- Zustand's devtools integration is sufficient. |
-| **Zustand** | Jotai | Jotai is atom-based (bottom-up), which works for simple apps but becomes hard to reason about when multiple atoms interact. Zustand's store-based (top-down) model is better for complex state with inter-slice dependencies (chat state depends on MCP connection state). |
-| **Zustand** | MobX | MobX's observable pattern is magical and hard to debug. Zustand's explicit `set()` calls are easier to trace. MobX's proxy-based reactivity can cause surprising performance issues with WebSocket message streams. |
+1. **Builder stage** -- Install Python dependencies into a virtual environment
+2. **Runtime stage** -- Copy venv + app code, minimal image
+3. **Security hardening** -- Non-root user, minimal permissions
 
-### Agent Orchestration
+**Key design decisions:**
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| **LangGraph** | Custom DAG implementation | LangGraph provides checkpointing, streaming, human-in-the-loop, and time-travel debugging out of the box. Building these from scratch would take months. The graph abstraction maps perfectly to the analyze-plan-execute-reflect-respond workflow. |
-| **LangGraph** | CrewAI / AutoGen | These are higher-level multi-agent frameworks. NextFlow needs low-level graph control for conditional branching, loops, and parallel tool execution. LangGraph provides this. CrewAI and AutoGen abstract away too much control. |
-| **LangGraph** | Dify (visual builder) | Dify is a product, not a library. Cannot be embedded in a custom platform. The visual workflow builder is explicitly excluded from NextFlow's scope. |
+- Use `python:3.12-slim-bookworm` (NOT Alpine) as runtime base. The `asyncpg`, `psycopg[binary]`, `cryptography`, and `pwdlib[argon2]` packages all ship pre-built wheels for glibc. On Alpine (musl), these compile from source, inflating build time from ~60s to ~10min and requiring `-dev` packages (`gcc`, `musl-dev`, `libffi-dev`, `postgresql-dev`).
+- Use `pip install` with `--no-cache-dir` and copy `pyproject.toml` before source code for Docker layer caching. Dependency install layer only rebuilds when `pyproject.toml` changes.
+- Create a non-root user (`nextflow`) with UID 1000. The backend does not need root. The Docker SDK (`docker.from_env()`) communicates via the Docker socket, which is group-accessible.
+- Do NOT use `uv` for this project. The backend uses `pyproject.toml` with `[dependency-groups]`, and `uv`'s lockfile would add a new build dependency and lock-in for marginal speed gain in CI. `pip` is sufficient for a single-service build.
+- Gunicorn with 2-4 Uvicorn workers (configurable via `WEB_CONCURRENCY` env var). Not `--preload` (causes issues with SQLAlchemy async engines and Redis connections created in lifespan).
+- Expose port 8000 (internal). Nginx handles external traffic.
+- Health check via `/health` endpoint (already exists in the codebase, checks Redis connectivity).
+- The Docker socket (`/var/run/docker.sock`) must be mounted for `SkillSandbox` to create skill containers. This is a security trade-off -- the backend can manage sibling containers.
 
-### Build Tool
+**Pattern:**
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| **Vite 7.x** | Vite 8.x (latest) | Vite 8.0.1 was released days ago (March 2026). Ecosystem plugins (shadcn/ui, TailwindCSS v4, etc.) may not be fully compatible. Wait 2-3 months for ecosystem to stabilize, then upgrade. |
-| **Vite** | Webpack | Webpack is slower (no native ESM), more complex to configure, and the React ecosystem has moved to Vite. No benefit for a greenfield project. |
-| **Vite** | Turbopack | Turbopack is still in beta and tightly coupled to Next.js. Not applicable for a Vite + React SPA. |
+```dockerfile
+# ---- Stage 1: Builder ----
+FROM python:3.12-slim-bookworm AS builder
 
-## Anti-Recommendations (What NOT to Use)
+WORKDIR /app
 
-| Technology | Why Avoid | What to Use Instead |
-|------------|-----------|-------------------|
-| **Milvus** | Operational complexity (etcd + MinIO + multiple services), weak async Python support. Overkill for expected scale. | Qdrant -- single binary, native async, simpler operations. |
-| **Redux / Redux Toolkit** | Excessive boilerplate for this scope. Zustand achieves the same with 5x less code. | Zustand with slice pattern. |
-| **Flask** | Synchronous framework. No native WebSocket support. No automatic API documentation. Would require workarounds for every async operation. | FastAPI -- async-native, WebSocket support, Pydantic validation, auto-generated docs. |
-| **Django** | Monolithic framework. ORM is synchronous. WebSocket support requires Channels (additional complexity). Not suited for async-heavy agent platform. | FastAPI -- purpose-built for async APIs. |
-| **Socket.IO** | Proprietary protocol layer over WebSocket. Adds complexity without benefit since NextFlow controls both client and server. FastAPI's native WebSocket is sufficient. | FastAPI WebSocket with custom event protocol. |
-| **GraphQL** | Adds complexity (schema definition, resolver functions, query parsing) for a use case dominated by WebSocket streaming. REST + WebSocket is simpler and more performant for this architecture. | REST API (CRUD) + WebSocket (streaming). |
-| **MongoDB** | Document store does not fit relational data model (users -> conversations -> messages, agents -> tools, skills -> permissions). Would sacrifice referential integrity and query flexibility. | PostgreSQL -- relational model fits the data perfectly. |
-| **ChromaDB** | Prototype-grade vector database. Not suitable for production. Performance degrades above 1M vectors. No production deployment tooling. | Qdrant -- production-grade, single binary, good performance. |
-| **Prisma** (backend) | Prisma is a Node.js ORM. NextFlow's backend is Python. | SQLAlchemy 2.x with asyncpg. |
-| **Next.js** | Adds SSR complexity that NextFlow does not need. The frontend is a client-side SPA consuming REST + WebSocket APIs. Next.js SSR/RSC provides no benefit for this architecture. | Vite + React SPA. |
-| **SSE (Server-Sent Events) for primary channel** | SSE is unidirectional (server -> client). The chat interface requires bidirectional communication (send messages, receive streaming). SSE would require a separate channel for client -> server. | WebSocket for bidirectional real-time communication. |
+# Install build dependencies (needed for psycopg[binary], asyncpg, argon2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-## Version Resolution Notes
+# Copy dependency spec first for layer caching
+COPY pyproject.toml ./
 
-### React 18 vs React 19
+# Create venv and install dependencies
+RUN python -m venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+RUN pip install --no-cache-dir ".[dev]" || pip install --no-cache-dir .
 
-PROJECT.md specifies React 18, but the recommended stack uses React 19 (v19.2.4 current). Rationale:
+# ---- Stage 2: Runtime ----
+FROM python:3.12-slim-bookworm AS runtime
 
-1. React 19 is backward-compatible with React 18 APIs
-2. React 19 provides Actions (form handling), `use()` hook, and improved Suspense
-3. Starting a new project on React 18 in 2026 means choosing a version that will stop receiving feature updates
-4. shadcn/ui, Zustand 5, and TanStack Query 5 all support React 19
-5. No breaking changes that affect NextFlow's architecture
+# Install runtime dependencies only (no -dev packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-**Decision: Use React 19. Update PROJECT.md to reflect this.**
+# Create non-root user
+RUN groupadd -r nextflow && useradd -r -g nextflow -d /app -s /sbin/nologin nextflow
 
-### Vite 7 vs Vite 8
+WORKDIR /app
 
-Vite 8.0.1 was released days ago (mid-March 2026). Rationale for recommending Vite 7.3.1:
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
 
-1. Major version zero-day releases often have ecosystem plugin incompatibilities
-2. TailwindCSS v4, shadcn/ui, and other tools need time to verify compatibility
-3. Vite 7 is battle-tested with months of production use
-4. Upgrade path from 7 to 8 is straightforward once ecosystem stabilizes
+# Copy application code
+COPY --chown=nextflow:nextflow . .
 
-**Decision: Use Vite 7.x now. Plan Vite 8 upgrade for 2-3 months post-launch.**
+# Set environment
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-### Qdrant vs Milvus Decision
+USER nextflow
 
-Both are competent vector databases. Qdrant wins for NextFlow because:
+EXPOSE 8000
 
-1. **Async-first Python client**: `AsyncQdrantClient` is a first-class citizen, not an afterthought. Milvus's Python client (`pymilvus`) has async support but it is less mature.
-2. **Operational simplicity**: Qdrant is a single binary or single Docker container. Milvus standalone requires etcd + MinIO + root coordinator + query coordinator + data coordinator + index coordinator + proxy. That is 7 containers vs 1.
-3. **LangChain integration quality**: Both have LangChain integrations, but Qdrant's is more actively maintained and has better documentation for the vector store retriever pattern.
-4. **Scale ceiling**: Milvus is better at 100M+ vectors with distributed deployment. NextFlow will not reach that scale in v1 or v2. If it does, migration from Qdrant to Milvus is a data migration, not an architecture rewrite.
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-**Decision: Use Qdrant. Design the vector DB access behind an abstraction layer so migration is possible if scale demands it.**
-
-## Installation
-
-### Backend (Python)
-
-```bash
-# Core framework
-pip install fastapi==0.135.* uvicorn[standard] sqlalchemy[asyncio] asyncpg alembic
-
-# Agent engine
-pip install langgraph==1.1.* langchain-core langchain-openai langchain-anthropic langchain-community
-pip install langgraph-checkpoint-postgres
-
-# MCP protocol
-pip install mcp==1.26.*
-
-# Authentication
-pip install python-jose[cryptography] passlib[bcrypt]
-
-# Database clients
-pip install redis qdrant-client minio
-
-# Task queue
-pip install celery[redis]==5.6.*
-
-# Utilities
-pip install httpx structlog pydantic-settings docker
-
-# Development
-pip install pytest pytest-asyncio pytest-cov ruff mypy
+CMD ["gunicorn", "app.main:app", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "-w", "4", \
+     "-b", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--graceful-timeout", "120", \
+     "--max-requests", "5000", \
+     "--max-requests-jitter", "500", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
 ```
 
-### Frontend (Node.js)
+### Frontend Dockerfile: Multi-Stage Build (Node -> Nginx)
 
-```bash
-# Create project
-npm create vite@7 next-flow-ui -- --template react-ts
-cd next-flow-ui
+The frontend Dockerfile has three stages:
 
-# UI framework
-npx shadcn@latest init
-npx shadcn@latest add button card input dialog dropdown-menu tabs scroll-area separator avatar badge sheet
+1. **Builder stage** -- Node.js installs dependencies and builds the Vite SPA
+2. **Nginx stage** -- Copies built assets from builder, adds Nginx config
+3. Runs as non-root on port 80
 
-# State management
-npm install zustand @tanstack/react-query
+**Key design decisions:**
 
-# Markdown rendering
-npm install react-markdown remark-gfm rehype-highlight
+- Use `node:22-alpine` for the build stage. Node.js on Alpine works fine because npm packages ship pre-built musl binaries. Build stage is discarded, so image size does not matter.
+- Use `nginx:1.27-alpine` for the runtime. Nginx on Alpine is battle-tested and ~25MB.
+- The Vite build output goes to `/usr/share/nginx/html`. Nginx serves static files directly.
+- The Nginx config is baked into the image (not mounted). This makes the image self-contained. Config changes require image rebuild, which is correct for production.
+- The frontend already uses relative API paths (`/api/v1/...` in `api-client.ts`, `/ws/chat` in `use-websocket.ts`). The WebSocket URL uses `window.location.host` for protocol detection. No environment variable injection needed at build time -- Nginx handles routing.
+- Do NOT use `VITE_API_URL` or any build-time env vars. The frontend is deployed behind the same Nginx that proxies the backend. Relative paths work. Build once, deploy anywhere.
 
-# WebSocket
-npm install (native WebSocket API -- no library needed)
+**Pattern:**
 
-# Development
-npm install -D @types/node tailwindcss @tailwindcss/vite
+```dockerfile
+# ---- Stage 1: Build React SPA ----
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependency files first for layer caching
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# ---- Stage 2: Nginx + SPA + Reverse Proxy ----
+FROM nginx:1.27-alpine
+
+# Copy built SPA assets
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy Nginx configuration
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/nextflow.conf /etc/nginx/conf.d/default.conf
+
+# Remove default Nginx config (already replaced by copy above)
+RUN rm -f /etc/nginx/conf.d/default.conf.bak
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
-### Docker Services (docker-compose.yml)
+### Nginx Configuration
+
+Nginx serves three roles in a single container:
+
+1. **Static file server** for the React SPA (`/usr/share/nginx/html`)
+2. **Reverse proxy** for REST API calls (`/api/v1/*` -> `backend:8000`)
+3. **WebSocket proxy** for streaming (`/ws/*` -> `backend:8000`)
+
+**Key design decisions for Nginx config:**
+
+- `proxy_http_version 1.1` is required for WebSocket upgrade.
+- `proxy_set_header Upgrade` and `Connection "upgrade"` are required for WebSocket handshake.
+- `proxy_read_timeout 86400s` prevents Nginx from closing long-lived WebSocket connections. The default 60s timeout would kill idle chat connections.
+- `proxy_buffering off` for `/ws/*` ensures streaming events are forwarded immediately, not batched.
+- SPA fallback: `try_files $uri $uri/ /index.html` for client-side routing (React Router).
+- Static asset caching: `location /assets/` with `expires 1y` for Vite-hashed filenames.
+- Do NOT configure SSL in Nginx for this milestone. SSL termination should happen at a load balancer or external reverse proxy in production. This Nginx handles HTTP only within the Docker network.
+- The `client_max_body_size 50m` is needed for skill package uploads via the MCP/Skills API.
+- Gzip compression for API responses and static files reduces bandwidth.
+
+**Pattern (`nextflow.conf`):**
+
+```nginx
+upstream backend {
+    server backend:8000;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    client_max_body_size 50m;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml;
+    gzip_min_length 256;
+
+    # --- API reverse proxy ---
+    location /api/v1/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    # --- WebSocket proxy ---
+    location /ws/ {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_buffering off;
+    }
+
+    # --- Static assets with long cache (Vite hashed filenames) ---
+    location /assets/ {
+        root /usr/share/nginx/html;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # --- SPA fallback ---
+    location / {
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # --- Health check endpoint (Nginx-level) ---
+    location /nginx-health {
+        access_log off;
+        return 200 "ok";
+        add_header Content-Type text/plain;
+    }
+}
+```
+
+### Docker Compose: Production Configuration
+
+The production `docker-compose.yml` extends the existing infrastructure-only compose with app services.
+
+**Key design decisions:**
+
+- **Service dependencies with health checks**: `backend` depends on `postgres` and `redis` being healthy (not just started). `frontend` (nginx) depends on `backend` being healthy. This ensures ordered startup.
+- **No port exposure for backend**: Backend only exposes port 8000 within the Docker network. Nginx (frontend service) is the single external entry point on port 80.
+- **Docker socket mount**: The backend service mounts `/var/run/docker.sock` for `SkillSandbox` to manage sibling containers. This is scoped to the docker group, not root. This is a deliberate security trade-off: skill sandbox functionality requires container management capability.
+- **Named volumes for data persistence**: PostgreSQL data, Redis data, MinIO data persist across `docker-compose down && up`.
+- **Restart policy**: `unless-stopped` for all services. Not `always` (which restarts after `docker stop`).
+- **Resource limits**: Memory limits prevent runaway containers. Backend gets 1GB (LangGraph + LLM calls can be memory-intensive). Nginx gets 128MB. PostgreSQL gets 512MB.
+- **Environment variables**: Injected via `.env` file (already in use). Production overrides via `.env.production` or environment variable injection from the orchestrator.
+- **Network**: All services on a shared bridge network (`nextflow-net`). No host networking.
+- **Alembic migrations**: Run as a one-shot container before the backend starts: `docker compose run --rm backend alembic upgrade head`. Do NOT bake migrations into the backend startup (migration failures should be explicit, not silent).
+
+**Pattern:**
 
 ```yaml
 services:
+  # ---- Infrastructure (existing) ----
   postgres:
-    image: postgres:16
-    ports: ["5432:5432"]
+    image: pgvector/pgvector:pg16
+    container_name: nextflow-postgres
     environment:
-      POSTGRES_DB: nextflow
       POSTGRES_USER: nextflow
-      POSTGRES_PASSWORD: nextflow
-    volumes: [postgres_data:/var/lib/postgresql/data]
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nextflow}
+      POSTGRES_DB: nextflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nextflow-net
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
-    volumes: [redis_data:/data]
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports: ["6333:6333"]
-    volumes: [qdrant_data:/qdrant/storage]
+    container_name: nextflow-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nextflow-net
 
   minio:
     image: minio/minio:latest
-    ports: ["9000:9000", "9001:9001"]
+    container_name: nextflow-minio
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-nextflow}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-nextflow123}
+    volumes:
+      - minio_data:/data
     command: server /data --console-address ":9001"
-    volumes: [minio_data:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nextflow-net
+
+  # ---- Application Services (new) ----
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nextflow-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nextflow:${POSTGRES_PASSWORD:-nextflow}@postgres:5432/nextflow
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      CORS_ORIGINS: '["http://localhost","http://localhost:80"]'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - nextflow-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nextflow-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - nextflow-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  nextflow-net:
+    driver: bridge
 ```
 
-## Pinning Strategy
+### Development Docker Compose
 
-| Category | Strategy | Rationale |
-|----------|----------|-----------|
-| LangGraph | `1.1.*` (minor+patch) | Rapid release cadence (weekly). Pin minor to avoid breaking changes. |
-| LangChain ecosystem | `latest` (no pin) | LangChain follows semver loosely. Pinning causes version conflict cascades. Use `requirements.txt` lockfile from CI. |
-| FastAPI | `0.135.*` | Pre-1.0 semver -- patch versions may have minor features but stay compatible within 0.135.x. |
-| MCP SDK | `1.26.*` | Protocol version matters. New SDK versions may change transport behavior. Pin minor. |
-| Celery | `5.6.*` | Stable release series. Patch versions are bugfix-only. |
-| React | `19.x` | Major version pin. React follows semver strictly. |
-| Vite | `7.x` | Major version pin. Ecosystem compatibility matters. |
-| All others | Latest compatible | Use `pip freeze` / `npm shrinkwrap` for reproducible builds. |
+Keep the existing `docker-compose.yml` (infrastructure only) for local development. Rename to `docker-compose.dev.yml` or use Docker Compose profiles.
+
+**Pattern:**
+- `docker-compose.yml` -- Production (all services, including app)
+- `docker-compose.override.yml` -- Development overrides (expose backend port 8000, frontend port 5173, no resource limits)
+- OR: Docker Compose profiles (`--profile dev` vs `--profile prod`)
+
+The simplest approach: the existing `docker-compose.yml` becomes the production file. A `docker-compose.override.yml` is auto-merged by Docker Compose when present, and adds development-only ports and settings. Developers add `.override.yml` to `.gitignore` for local customization.
+
+### .dockerignore Files
+
+**Backend `.dockerignore`:**
+```
+__pycache__
+*.pyc
+*.pyo
+.git
+.env
+.venv
+venv
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests/
+alembic/versions/
+*.md
+```
+
+**Frontend `.dockerignore`:**
+```
+node_modules
+dist
+.git
+.env*
+*.md
+```
+
+### Multi-Environment Configuration
+
+**Pattern: `.env.example` + `.env` (gitignored)**
+
+The backend already uses `pydantic-settings` with `.env` file support. The container environment overrides critical URLs:
+
+| Variable | Development | Production (Docker) | Override Method |
+|----------|-------------|---------------------|-----------------|
+| `DATABASE_URL` | `localhost:5432` | `postgres:5432` | `environment:` in compose |
+| `REDIS_URL` | `localhost:6380/0` | `redis:6379/0` | `environment:` in compose |
+| `MINIO_ENDPOINT` | `localhost:9000` | `minio:9000` | `environment:` in compose |
+| `CORS_ORIGINS` | `["http://localhost:5173"]` | `["http://localhost"]` | `environment:` in compose |
+| `JWT_SECRET_KEY` | `change-me` | Generated per-env | `.env` file |
+| `OPENAI_API_KEY` | User's key | Production key | `.env` file (gitignored) |
+
+The `.env` file supplies secrets and API keys. The `environment:` block in compose supplies Docker-network-aware URLs. Pydantic-settings loads `.env` first, then environment variables override. This is the correct precedence for Docker.
+
+---
+
+## Alternatives Considered
+
+### Reverse Proxy
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| **Nginx** | Traefik | Traefik is excellent for dynamic service discovery but adds complexity for a 2-service setup. Nginx config is a single file anyone can read. Traefik's auto-discovery and labels are overkill when there are exactly two backend services (static files + API). |
+| **Nginx** | Caddy | Caddy has automatic HTTPS via Let's Encrypt, which is compelling. However, NextFlow v1.1 targets Docker deployment behind a load balancer or reverse proxy that handles TLS. Adding Caddy's automatic TLS inside the container creates a layered TLS complexity. Revisit for standalone deployments. |
+| **Nginx** | HAProxy | HAProxy is a TCP/HTTP load balancer, not a static file server. Would need a separate file server for the SPA. Nginx handles both in one process. |
+| **Nginx** | Caddy (inside container) | Same as above. Caddy's auto-HTTPS is useful for direct internet exposure, but the architecture assumes an external TLS terminator. |
+
+### Process Manager
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| **Gunicorn + UvicornWorker** | Uvicorn standalone | Single-process. Cannot utilize multiple CPU cores. No automatic crash recovery. No graceful reload. Acceptable for development, not production. |
+| **Gunicorn + UvicornWorker** | Docker-native scaling (`deploy.replicas`) | Docker Compose replicas share the same network and port. Without a process manager, each replica needs a unique port or a separate load balancer. Gunicorn handles worker management within a single container simply. |
+| **Gunicorn + UvicornWorker** | Supervisord | Supervisord is a general-purpose process manager. Gunicorn is purpose-built for Python WSGI/ASGI workers with Uvicorn integration. Supervisord would be an extra dependency with no benefit. |
+
+### Python Base Image
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| **python:3.12-slim-bookworm** | python:3.12-alpine | Alpine uses musl libc. The `asyncpg`, `psycopg[binary]`, `cryptography`, and `pwdlib[argon2]` packages have no pre-built musl wheels. Compilation from source requires `gcc`, `musl-dev`, `libffi-dev`, `postgresql-dev`, increasing build time 5-10x and adding build tools to the image (or complex multi-stage cleanup). The ~30MB size savings does not justify the build complexity and compatibility risk. |
+| **python:3.12-slim-bookworm** | python:3.12 (full) | Full image is ~1GB vs ~50MB for slim. Includes build tools, apt package cache, and unnecessary system libraries. No benefit for production. |
+| **python:3.12-slim-bookworm** | distroless/python3 | Distroless has no shell, which means no `docker exec` for debugging, no `curl` for health checks, and no ability to run Alembic migrations as a one-shot command. The security benefit (no shell for attacker) is offset by the operational pain. |
+| **python:3.12-slim-bookworm** | chainguard/python | Chainguard images are security-hardened and rootless by default. Worth evaluating for v2, but adds a new base image vendor dependency and may have package compatibility quirks. |
+
+### Node.js Base Image (Build Stage Only)
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| **node:22-alpine** | node:22-slim | Build stage only -- image is discarded. Alpine is smaller and faster to pull. Node.js packages work fine on Alpine. |
+| **node:22-alpine** | node:22 (full) | 1GB+ for a build-only stage. No benefit. |
+
+## Anti-Recommendations
+
+| Technology | Why Avoid | What to Use Instead |
+|------------|-----------|-------------------|
+| **Alpine for Python runtime** | musl libc breaks pre-built wheels for asyncpg, psycopg, cryptography. Build time 5-10x longer. Hidden runtime issues (threading behavior differs under musl). | `python:3.12-slim-bookworm` -- glibc, compatible, fast builds. |
+| **Distroless for backend** | No shell means no health checks, no `docker exec` debugging, no Alembic migration commands. Operational pain outweighs security benefit for v1.1. | `python:3.12-slim-bookworm` with non-root user. |
+| **Root user in containers** | Container escape exploits gain root on host if user is root inside container. Defense-in-depth requires non-root. | `USER nextflow` with UID 1000 in both Dockerfiles. |
+| **Build-time env vars for frontend** | `VITE_API_URL` baked into the JS bundle means different images for different environments. Breaks "build once, deploy anywhere." | Relative paths (`/api/v1/...`) + Nginx routing. Build once. |
+| **SSL in Nginx container** | TLS should terminate at the load balancer / ingress controller, not inside the application container. Double TLS adds latency and certificate management complexity. | HTTP inside Docker network. TLS at the edge (load balancer, Cloudflare, AWS ALB). |
+| **`docker-compose up` for production** | Docker Compose is acceptable for single-host deployment but is not a production orchestrator. No auto-scaling, no rolling updates, no service mesh. | Docker Compose for v1.1 MVP. Plan Kubernetes migration for scale. |
+| **`uv` for package management** | The project uses `pip` with `pyproject.toml`. Adding `uv` introduces a new tool dependency, lockfile format, and potential incompatibility with `pyproject.toml` `[dependency-groups]`. The build speed gain (30s vs 5s) is not worth the tooling risk for a single service. | `pip` with `--no-cache-dir` and multi-stage build. |
+| **`--preload` in Gunicorn** | Preloading the app before forking workers shares memory but breaks SQLAlchemy async engines (connections created before fork are shared across workers, causing connection pool corruption). The backend's `lifespan` handler creates Redis, checkpointer, store, and MCP connections per-worker. | Default lazy loading. Each worker initializes independently via FastAPI lifespan. |
+
+---
+
+## New Dependencies
+
+### Backend (add to pyproject.toml)
+
+```toml
+# Production server
+"gunicorn>=23.0.0",
+```
+
+Gunicorn is the only new Python dependency. Everything else is already installed.
+
+### Frontend (no new dependencies)
+
+No new npm packages needed. The existing `npm run build` produces the SPA. Nginx serves it.
+
+### Infrastructure (no new images)
+
+No new Docker services. The existing PostgreSQL, Redis, and MinIO containers continue as-is. The two new build contexts (backend/Dockerfile, frontend/Dockerfile) use existing base images.
+
+---
+
+## Security Considerations
+
+| Concern | Mitigation | Priority |
+|---------|------------|----------|
+| **Docker socket exposure** | Backend mounts `/var/run/docker.sock:ro` (read-only). The Docker SDK only needs to create/manage containers, not modify the daemon. Consider Docker socket proxy ( Tecnativa/docker-socket-proxy) for v2 to restrict API access. | Critical |
+| **Non-root containers** | Both Dockerfiles create and use a non-root user (`nextflow`). No process runs as root inside the container. | Critical |
+| **Secret management** | `.env` file is gitignored. Production secrets injected via environment variables, not baked into images. | Critical |
+| **Image vulnerability scanning** | Use `docker scout` or Trivy in CI to scan images for CVEs before pushing to registry. | High |
+| **Network isolation** | All services on `nextflow-net` bridge network. Backend and infrastructure are not exposed to the host. Only Nginx (port 80) is externally accessible. | High |
+| **Resource limits** | Memory limits prevent OOM from affecting other containers. Backend: 1GB, Nginx: 128MB, PostgreSQL: 512MB. | Medium |
+| **Health checks** | All services have health checks. Docker Compose restarts unhealthy containers. | Medium |
+
+---
+
+## Gunicorn Configuration Details
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| `worker_class` | `uvicorn.workers.UvicornWorker` | ASGI support for FastAPI + WebSocket |
+| `workers` | `4` (default, overridable via `WEB_CONCURRENCY`) | 2x CPU cores + 1 on 2-core machine. Async workers handle many connections each, so 4 is sufficient. |
+| `bind` | `0.0.0.0:8000` | Internal port, Nginx proxies to it |
+| `timeout` | `120` | Agent workflow can take 60-90s for complex tool calls. Default 30s would kill workers. |
+| `graceful_timeout` | `120` | Time for in-flight requests to complete during shutdown. Matches timeout. |
+| `max_requests` | `5000` | Restart workers periodically to prevent memory leaks from LangGraph checkpoint accumulation. |
+| `max_requests_jitter` | `500` | Stagger worker restarts so all workers do not restart simultaneously. |
+| `access_logfile` | `-` (stdout) | Docker collects stdout as logs. |
+| `error_logfile` | `-` (stdout) | Same. |
+
+---
+
+## Migration Strategy
+
+**Current state -> Target state:**
+
+1. Add `gunicorn` to `pyproject.toml` dependencies
+2. Create `backend/Dockerfile` (multi-stage, non-root)
+3. Create `backend/.dockerignore`
+4. Create `frontend/Dockerfile` (multi-stage Node -> Nginx)
+5. Create `frontend/.dockerignore`
+6. Create `frontend/nginx/nginx.conf` (main config)
+7. Create `frontend/nginx/nextflow.conf` (server block)
+8. Update `docker-compose.yml` to add `backend` and `frontend` services
+9. Create `.env.production.example` template
+10. Test: `docker compose up --build`
+11. Verify: health checks pass, API accessible via Nginx, WebSocket streaming works, SPA loads
+
+**What does NOT change:**
+- Development workflow (local FastAPI + Vite dev server with proxy) stays the same
+- Existing `docker-compose.yml` infrastructure services are preserved in-place
+- Backend code (no changes needed for containerization)
+- Frontend code (relative paths already work behind Nginx)
+
+---
 
 ## Sources
 
-- LangGraph PyPI: https://pypi.org/project/langgraph/ -- v1.1.3, released 2026-03-18, Python >=3.10 (HIGH confidence -- official PyPI)
-- MCP SDK PyPI: https://pypi.org/project/mcp/ -- v1.26.0, released 2026-01-24, Python >=3.10 (HIGH confidence -- official PyPI)
-- Celery GitHub Releases: https://github.com/celery/celery/releases -- v5.6.2, released 2026-01-04 (HIGH confidence -- official GitHub)
-- FastAPI GitHub Releases: https://github.com/fastapi/fastapi/releases -- v0.135.1, released 2026-03-01 (HIGH confidence -- official GitHub)
-- Qdrant async support: https://pypi.org/project/qdrant-client/ -- `AsyncQdrantClient` available (MEDIUM confidence -- PyPI docs, verified by project research)
-- Vite version verification: https://www.npmjs.com/package/vite -- v8.0.1 (days old), v7.3.1 (stable) (HIGH confidence -- official npm)
-- React version: https://www.npmjs.com/package/react -- v19.2.4 current (HIGH confidence -- official npm)
-- Zustand docs: https://zustand.docs.pmnd.rs/ -- v5.x with slice pattern (HIGH confidence -- official docs)
-- LangGraph Persistence docs: https://docs.langchain.com/oss/python/langgraph/persistence (HIGH confidence -- official LangChain docs)
-- MCP Transports spec: https://modelcontextprotocol.io/docs/concepts/transports (HIGH confidence -- official MCP spec)
-- PROJECT.md: `.planning/PROJECT.md` -- project constraints and architecture decisions (HIGH confidence -- project definition)
+- Python Docker official image: https://hub.docker.com/_/python -- `python:3.12-slim-bookworm` tag exists, Debian Bookworm based (HIGH confidence -- official Docker Hub)
+- Nginx Docker official image: https://hub.docker.com/_/nginx -- `nginx:1.27-alpine` tag, stable mainline branch (HIGH confidence -- official Docker Hub)
+- Node.js Docker official image: https://hub.docker.com/_/node -- `node:22-alpine` tag, LTS line (HIGH confidence -- official Docker Hub)
+- Gunicorn Uvicorn workers: https://docs.gunicorn.org/en/stable/settings.html#worker-class -- `uvicorn.workers.UvicornWorker` documented (HIGH confidence -- official Gunicorn docs)
+- FastAPI deployment docs: https://fastapi.tiangolo.com/deployment/docker/ -- recommends Gunicorn + UvicornWorker pattern (HIGH confidence -- official FastAPI docs)
+- Nginx WebSocket proxying: https://nginx.org/en/docs/http/websocket.html -- `proxy_http_version 1.1` + Upgrade headers required (HIGH confidence -- official Nginx docs)
+- Docker Compose healthcheck: https://docs.docker.com/compose/compose-file/05-services/#healthcheck (HIGH confidence -- official Docker docs)
+- Docker security best practices: https://docs.docker.com/build/building/best-practices/ -- non-root user, multi-stage builds, .dockerignore (HIGH confidence -- official Docker docs)
+- Pydantic Settings env precedence: https://docs.pydantic.dev/latest/concepts/pydantic_settings/ -- env vars override .env file values (HIGH confidence -- official Pydantic docs)
+- Existing codebase analysis: `backend/app/core/config.py`, `backend/app/main.py`, `frontend/src/lib/api-client.ts`, `frontend/src/hooks/use-websocket.ts`, `frontend/vite.config.ts` (HIGH confidence -- direct source code review)
+- Existing docker-compose.yml: `/docker-compose.yml` -- infrastructure services with health checks (HIGH confidence -- direct file review)
+- Backend pyproject.toml: `/backend/pyproject.toml` -- dependency specs (HIGH confidence -- direct file review)
 
 ---
-*Stack research for: NextFlow -- Universal Agent Platform*
-*Researched: 2026-03-28*
+
+*Stack research for: NextFlow v1.1 Docker Containerization & Production Deployment*
+*Researched: 2026-03-31*
