@@ -1,6 +1,6 @@
 """Conversation CRUD service with cursor-based pagination."""
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
@@ -74,6 +74,9 @@ class ConversationService:
 
     @staticmethod
     async def delete(db: AsyncSession, conversation: Conversation) -> None:
+        await db.execute(
+            delete(Message).where(Message.conversation_id == conversation.id)
+        )
         await db.delete(conversation)
         await db.flush()
 
