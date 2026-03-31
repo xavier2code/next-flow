@@ -4,7 +4,6 @@ from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.ws.connection_manager import ConnectionManager
 from app.core.security import decode_token
 from app.db.redis import get_redis
 from app.db.session import get_db
@@ -18,7 +17,6 @@ __all__ = [
     "get_redis",
     "get_current_user",
     "get_tool_registry",
-    "get_connection_manager",
     "get_mcp_manager",
     "get_skill_manager",
 ]
@@ -48,11 +46,6 @@ async def get_current_user(
 def get_tool_registry(request: Request) -> ToolRegistry:
     """Retrieve the ToolRegistry instance from application state."""
     return request.app.state.tool_registry
-
-
-def get_connection_manager(request: Request) -> ConnectionManager:
-    """Retrieve the ConnectionManager instance from application state."""
-    return request.app.state.connection_manager
 
 
 def get_mcp_manager(request: Request) -> MCPManager:
