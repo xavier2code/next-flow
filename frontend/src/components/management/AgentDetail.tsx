@@ -29,7 +29,7 @@ interface AgentDetailProps {
 const DEFAULT_MODELS = ['openai', 'anthropic', 'ollama']
 
 export default function AgentDetail({ agentId, isNew, onCreated, onCancel }: AgentDetailProps) {
-  const { data: agent, isLoading } = useAgent(isNew ? undefined : agentId ?? undefined)
+  const { data: agent, isLoading } = useAgent(isNew ? null : agentId)
   const { data: systemConfig } = useSystemConfig()
   const createAgent = useCreateAgent()
   const updateAgent = useUpdateAgent()
