@@ -50,6 +50,9 @@ COPY --from=builder /app/alembic.ini ./
 COPY --from=builder /app/gunicorn.conf.py ./
 COPY --from=builder /app/entrypoint.sh ./
 
+# Remove __pycache__ directories created during build
+RUN find /app/app /app/alembic -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
 # Ensure entrypoint is executable
 RUN chmod +x entrypoint.sh
 
