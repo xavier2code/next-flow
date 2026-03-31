@@ -44,6 +44,8 @@
 
 **Phase 11 complete (2026-04-01):** Vercel AI SDK integration — SSE Data Stream Protocol v2 endpoint, useChat hook replacing WebSocket/Zustand streaming, reasoning display pipeline, Regenerate button, WebSocket infrastructure removal.
 
+**Phase 9 complete (2026-04-01):** Frontend Dockerfile (multi-stage: Node 22 → Nginx 1.27-alpine) + Nginx production config (SPA fallback, API reverse proxy, SSE passthrough, gzip). Docker build verified (zero errors, 1MB image). @ai-sdk/react v3 parts-based API migration.
+
 **Known gaps:**
 - SKIL-04 (hot-update): Skill lifecycle CRUD exists but hot-update in production requires Docker Watch integration
 - UI UAT pending: Frontend build verified (zero TS errors, 938KB bundle) but manual end-to-end testing requires running backend + frontend together
@@ -176,4 +178,4 @@
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-31 after Phase 8 (Backend Containerization) completed*
+*Last updated: 2026-04-01 after Phase 9 (Frontend Nginx Containerization) completed*
