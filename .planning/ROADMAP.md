@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-31)
   - [Archive](milestones/v1.0-ROADMAP.md) | [Requirements](milestones/v1.0-REQUIREMENTS.md)
 - 🚧 **v1.1 Docker Deployment** — Phases 8-10 (in progress)
-- 📋 **v1.2 Vercel AI SDK Integration** — Phase 11 (planned)
+- 📋 **v1.2 Vercel AI SDK Integration** — Phase 11 (gap closure in progress)
 
 ## Phases
 
@@ -30,11 +30,11 @@
 - [ ] **Phase 9: Frontend + Nginx Containerization** — Build React SPA and serve behind Nginx reverse proxy
 - [ ] **Phase 10: Production Compose & Hardening** — Wire all services together with docker-compose.prod.yml and harden for production
 
-### 📋 v1.2 Vercel AI SDK Integration (Planned)
+### 📋 v1.2 Vercel AI SDK Integration (Gap Closure)
 
 **Milestone Goal:** Replace custom WebSocket streaming with Vercel AI SDK Data Stream Protocol v2 + useChat hook for a more robust, feature-rich chat experience.
 
-- [x] **Phase 11: Vercel AI SDK Deep Integration** — Replace REST+WebSocket+Redis pub/sub streaming with SSE Data Stream v2 + useChat hook (completed 2026-03-31)
+- [ ] **Phase 11: Vercel AI SDK Deep Integration** — Replace REST+WebSocket+Redis pub/sub streaming with SSE Data Stream v2 + useChat hook (gap closure)
 
 ## Phase Details
 
@@ -100,13 +100,15 @@ Plans:
   5. Abort (stop generation) and regenerate work correctly through the SSE transport
   6. Tool calls display in the UI using useChat's built-in `toolInvocations` on UIMessage
   7. Conversation CRUD REST APIs remain unchanged
-**Plans**: 3 plans
+**Plans**: 5 plans (3 original + 2 gap closure)
 **UI hint**: yes
 
 Plans:
 - [x] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
 - [x] 11-02-PLAN.md — Frontend useChat integration + dead code removal
 - [x] 11-03-PLAN.md — Backend WebSocket infrastructure cleanup
+- [ ] 11-04-PLAN.md — Reasoning display + Regenerate button + backend reasoning-end fix
+- [ ] 11-05-PLAN.md — Fix stale test file for current chat-store
 
 ## Progress
 
@@ -125,4 +127,4 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
 | 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
-| 11. Vercel AI SDK Deep Integration | v1.2 | 3/3 | Complete   | 2026-03-31 |
+| 11. Vercel AI SDK Deep Integration | v1.2 | 3/5 | Gap closure | 2026-03-31 |
