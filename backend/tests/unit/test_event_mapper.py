@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from langchain_core.messages import AIMessageChunk
 
-from app.api.ws.event_mapper import ThinkTagFilter, map_stream_events
+from app.services.event_mapper import ThinkTagFilter, map_stream_events
 
 
 # ---------------------------------------------------------------------------
