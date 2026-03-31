@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
-from app.api.ws.event_mapper import ThinkTagFilter
+from app.services.event_mapper import ThinkTagFilter
 from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
 from app.db.session import async_session_factory
