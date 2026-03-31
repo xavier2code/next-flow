@@ -1,8 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router'
-import { useAuthStore } from '@/stores/auth-store'
 import { useUiStore } from '@/stores/ui-store'
-import { useWebSocket } from '@/hooks/use-websocket'
 import ActivityBar from './ActivityBar'
 import Sidebar from './Sidebar'
 
@@ -23,14 +21,7 @@ function useSyncNavFromRoute() {
 }
 
 export default function AppShell() {
-  const accessToken = useAuthStore((s) => s.accessToken)
-  const setConnectionStatus = useUiStore((s) => s.setConnectionStatus)
-  const { connectionStatus } = useWebSocket(accessToken)
   useSyncNavFromRoute()
-
-  useEffect(() => {
-    setConnectionStatus(connectionStatus)
-  }, [connectionStatus, setConnectionStatus])
 
   return (
     <div className="flex h-screen">

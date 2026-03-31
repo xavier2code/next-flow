@@ -1,37 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
+import { useChat } from '@ai-sdk/react'
 import { useNavigate } from 'react-router'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
-import { apiClient } from '@/lib/api-client'
 import { useCreateConversation, useUpdateConversation, useConversation } from '@/hooks/use-conversations'
-import type { ConnectionStatus } from '@/types/ws-events'
-import ConnectionStatusIndicator from './ConnectionStatus'
 import AgentDropdown from './AgentDropdown'
-import MessageBubble from './MessageBubble'
-import StreamingText from './StreamingText'
+import ChatMessage from './ChatMessage'
 import WelcomeScreen from './WelcomeScreen'
 import InputBox from './InputBox'
 import SidePanel from './SidePanel'
 
 interface ChatViewProps {
   conversationId?: string
-  connectionStatus: ConnectionStatus
 }
 
-export default function ChatView({
-  conversationId,
-  connectionStatus,
-}: ChatViewProps) {
+export default function ChatView({ conversationId }: ChatViewProps) {
   const navigate = useNavigate()
-  const {
-    messages,
-    streamingMessage,
-    isStreaming,
-    currentConversationId,
-    setCurrentConversation,
-    addUserMessage,
-  } = useChatStore()
+  const setCurrentConversation = useChatStore((s) => s.setCurrentConversation)
   const sidePanelOpen = useUiStore((s) => s.sidePanelOpen)
+  const setSidePanelOpen = useUiStore((s) => s.setSidePanelOpen)
   const createConversation = useCreateConversation()
   const updateConversation = useUpdateConversation()
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
@@ -46,80 +33,93 @@ export default function ChatView({
     }
   }, [conversationDetail?.agent_id])
 
+  const activeConversationId = conversationId ?? useChatStore((s) => s.currentConversationId)
+
+  // useChat configuration
+  const chatApi = activeConversationId
+    ? `/api/v1/conversations/${activeConversationId}/chat`
+    : undefined
+
+  const { messages, sendMessage, reload, stop, status, error } = useChat({
+    api: chatApi,
+    fetch: async (url, options) => {
+      // Get fresh token for each request via apiClient's auth callbacks
+      const token = localStorage.getItem('access_token')
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...options?.headers,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    },
+    onError: (err) => {
+      console.error('Chat error:', err)
+    },
+  })
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load messages when conversation changes (via sidebar click or URL navigation)
+  // Sync conversation ID when URL changes
   useEffect(() => {
-    if (!conversationId) return
-
-    if (conversationId !== currentConversationId) {
+    if (conversationId && conversationId !== useChatStore.getState().currentConversationId) {
       setCurrentConversation(conversationId)
     }
-
-    apiClient
-      .get<{ id: string; conversation_id: string; role: string; content: string; created_at: string }[]>(
-        `/api/v1/conversations/${conversationId}/messages`,
-      )
-      .then((data) => {
-        if (Array.isArray(data)) {
-          useChatStore.getState().setMessages(data)
-        }
-      })
-      .catch(() => {
-        // Conversation may not exist
-      })
-  }, [conversationId])
+  }, [conversationId, setCurrentConversation])
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingMessage])
+  }, [messages])
+
+  // Auto-open side panel when tool invocations appear
+  useEffect(() => {
+    const hasToolInvocations = messages.some(
+      (m) => m.toolInvocations && m.toolInvocations.length > 0
+    )
+    if (hasToolInvocations) setSidePanelOpen(true)
+  }, [messages, setSidePanelOpen])
 
   const handleAgentChange = (agentId: string) => {
     setSelectedAgentId(agentId)
-    if (currentConversationId) {
+    if (activeConversationId) {
       updateConversation.mutate({
-        id: currentConversationId,
+        id: activeConversationId,
         agent_id: agentId,
       })
     }
   }
 
   const handleSend = async (text: string) => {
-    let activeConversationId = currentConversationId
+    let targetConversationId = activeConversationId
 
     // Step 1: Ensure we have a conversation
-    if (!activeConversationId) {
+    if (!targetConversationId) {
       try {
         const result = await createConversation.mutateAsync({
           title: text.slice(0, 50),
           agent_id: selectedAgentId ?? undefined,
         })
-        activeConversationId = result.id
-        setCurrentConversation(activeConversationId)
-        navigate(`/conversations/${activeConversationId}`)
+        targetConversationId = result.id
+        setCurrentConversation(targetConversationId)
+        navigate(`/conversations/${targetConversationId}`)
+        // After navigation, the useChat api will update via activeConversationId
+        // Send the message on next tick so the hook reconfigures with the new conversation
+        setTimeout(() => {
+          sendMessage({ content: text })
+        }, 0)
+        return
       } catch {
-        // Failed to create conversation - show error
         return
       }
     }
 
-    // Step 2: Optimistically show the user message
-    addUserMessage(text)
-
-    // Step 3: Send message to backend (returns 202)
-    try {
-      await apiClient.post(
-        `/api/v1/conversations/${activeConversationId}/messages`,
-        { content: text },
-      )
-    } catch (err) {
-      console.error('Failed to send message:', err)
-      useChatStore.getState().clearStreamingState()
-    }
+    // Step 2: Send via useChat
+    sendMessage({ content: text })
   }
 
-  const hasMessages = messages.length > 0 || streamingMessage
+  const hasMessages = messages.length > 0
 
   return (
     <div className="flex h-full flex-col">
@@ -131,7 +131,22 @@ export default function ChatView({
             onAgentChange={handleAgentChange}
           />
         </div>
-        <ConnectionStatusIndicator status={connectionStatus} />
+        <div className="flex items-center gap-2">
+          {status === 'streaming' && (
+            <button
+              onClick={stop}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Stop
+            </button>
+          )}
+          {status === 'submitted' && (
+            <span className="text-xs text-muted-foreground">Sending...</span>
+          )}
+          {error && (
+            <span className="text-xs text-destructive">Error</span>
+          )}
+        </div>
       </div>
 
       {/* Content area: flex-1, split between messages and side panel */}
@@ -143,26 +158,23 @@ export default function ChatView({
               <WelcomeScreen onSelectPrompt={handleSend} />
             ) : (
               <div className="space-y-4">
-                {messages.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} />
+                {messages.map((message) => (
+                  <ChatMessage key={message.id} message={message} />
                 ))}
-                {streamingMessage && (
-                  <StreamingText
-                    content={streamingMessage.content}
-                    isStreaming={isStreaming}
-                  />
-                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
           </div>
 
           {/* Input box: fixed bottom */}
-          <InputBox onSend={handleSend} />
+          <InputBox
+            onSend={handleSend}
+            disabled={status === 'submitted' || status === 'streaming'}
+          />
         </div>
 
         {/* Side panel: 320px, collapsible */}
-        {sidePanelOpen && <SidePanel />}
+        {sidePanelOpen && <SidePanel messages={messages} />}
       </div>
     </div>
   )

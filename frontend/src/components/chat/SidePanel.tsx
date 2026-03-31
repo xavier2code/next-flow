@@ -1,54 +1,36 @@
 import { X } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
-import ThinkingEntry from './ThinkingEntry'
+import type { UIMessage } from '@ai-sdk/react'
 import ToolCallCard from './ToolCallCard'
 import ToolResultCard from './ToolResultCard'
 
-type EntryType = 'thinking' | 'tool_call' | 'tool_result'
+interface SidePanelProps {
+  messages: UIMessage[]
+}
 
 interface CombinedEntry {
   id: string
-  entryType: EntryType
-  timestamp: number
-  // Thinking
-  content?: string
-  // Tool call
-  name?: string
+  entryType: 'tool_call' | 'tool_result'
+  toolName: string
   args?: Record<string, unknown>
-  // Tool result
   result?: unknown
 }
 
-export default function SidePanel() {
-  const { thinkingEntries, toolCallEntries, toolResultEntries } = useChatStore()
+export default function SidePanel({ messages }: SidePanelProps) {
   const setSidePanelOpen = useUiStore((s) => s.setSidePanelOpen)
 
-  // Combine and sort all entries by timestamp
-  const allEntries: CombinedEntry[] = [
-    ...thinkingEntries.map((e) => ({
-      id: e.id,
-      entryType: 'thinking' as const,
-      timestamp: e.timestamp,
-      content: e.content,
-    })),
-    ...toolCallEntries.map((e) => ({
-      id: e.id,
-      entryType: 'tool_call' as const,
-      timestamp: e.timestamp,
-      name: e.name,
-      args: e.args,
-    })),
-    ...toolResultEntries.map((e) => ({
-      id: e.id,
-      entryType: 'tool_result' as const,
-      timestamp: e.timestamp,
-      name: e.name,
-      result: e.result,
-    })),
-  ].sort((a, b) => a.timestamp - b.timestamp)
+  // Extract all tool invocations from messages, sorted by message order
+  const allEntries: CombinedEntry[] = messages.flatMap((msg) =>
+    (msg.toolInvocations ?? []).map((inv) => ({
+      id: inv.toolCallId,
+      entryType: inv.state === 'result' ? ('tool_result' as const) : ('tool_call' as const),
+      toolName: inv.toolName,
+      args: typeof inv.args === 'object' ? (inv.args as Record<string, unknown>) : undefined,
+      result: inv.state === 'result' ? inv.result : undefined,
+    }))
+  )
 
   return (
     <div className="flex h-full w-80 flex-col border-l bg-card">
@@ -75,38 +57,23 @@ export default function SidePanel() {
             </div>
           ) : (
             <div className="space-y-3">
-              {allEntries.map((entry) => {
-                if (entry.entryType === 'thinking') {
-                  return (
-                    <ThinkingEntry
-                      key={entry.id}
-                      content={entry.content ?? ''}
-                      timestamp={entry.timestamp}
-                    />
-                  )
-                }
-                if (entry.entryType === 'tool_call') {
-                  return (
-                    <ToolCallCard
-                      key={entry.id}
-                      name={entry.name ?? ''}
-                      args={entry.args ?? {}}
-                      timestamp={entry.timestamp}
-                    />
-                  )
-                }
-                if (entry.entryType === 'tool_result') {
-                  return (
-                    <ToolResultCard
-                      key={entry.id}
-                      name={entry.name ?? ''}
-                      result={entry.result}
-                      timestamp={entry.timestamp}
-                    />
-                  )
-                }
-                return null
-              })}
+              {allEntries.map((entry) =>
+                entry.entryType === 'tool_call' ? (
+                  <ToolCallCard
+                    key={entry.id}
+                    name={entry.toolName}
+                    args={entry.args ?? {}}
+                    timestamp={Date.now()}
+                  />
+                ) : (
+                  <ToolResultCard
+                    key={entry.id}
+                    name={entry.toolName}
+                    result={entry.result}
+                    timestamp={Date.now()}
+                  />
+                )
+              )}
             </div>
           )}
         </div>

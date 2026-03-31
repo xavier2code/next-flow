@@ -119,31 +119,3 @@ export interface SystemConfig {
 export interface UserSettings {
   preferences: Record<string, unknown>
 }
-
-// Chat state types
-export interface ThinkingEntry {
-  id: string
-  content: string
-  timestamp: number
-}
-
-export interface ToolCallEntry {
-  id: string
-  name: string
-  args: Record<string, unknown>
-  timestamp: number
-}
-
-export interface ToolResultEntry {
-  id: string
-  name: string
-  result: unknown
-  timestamp: number
-}
-
-export interface StreamingMessage {
-  id: string
-  role: 'assistant'
-  content: string
-  isStreaming: boolean
-}

@@ -1,22 +1,18 @@
+import type { UIMessage } from '@ai-sdk/react'
 import { Bot, Sparkles } from 'lucide-react'
-import type { Message } from '@/types/api'
 import MarkdownRenderer from './MarkdownRenderer'
 
-interface MessageBubbleProps {
-  message: Message
+interface ChatMessageProps {
+  message: UIMessage
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+export default function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user'
-  const timestamp = new Date(message.created_at).toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 
+  // For user messages, display content directly
+  // For assistant messages, useChat handles streaming -- just render content
   return (
-    <div
-      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-    >
+    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar */}
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
@@ -43,9 +39,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         ) : (
           <MarkdownRenderer content={message.content} />
         )}
-        <span className="mt-1 block text-xs text-muted-foreground">
-          {timestamp}
-        </span>
       </div>
     </div>
   )
