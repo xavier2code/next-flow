@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Docker 部署就绪
-status: defining_requirements
+status: roadmap_created
 stopped_at: ""
-last_updated: "2026-03-31T12:00:00.000Z"
+last_updated: "2026-03-31T14:00:00.000Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -21,21 +21,46 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** 让 Agent 能够通过标准化的技能和工具接口，灵活接入多种 LLM 模型和外部服务，可靠地完成复杂任务
-**Current focus:** v1.1 Docker 部署就绪
+**Current focus:** Phase 8 — Backend Containerization
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-31 — Milestone v1.1 started
+Phase: 8 of 10 (Backend Containerization)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-03-31 — v1.1 roadmap created
+
+Progress: [██████████░░░░░░░░░░] 70% (22 v1.0 plans done, 0/6 v1.1 plans done)
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 22 (v1.0)
+- v1.1 plans completed: 0
+
+**By Phase (v1.0):**
+
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 1. Foundation & Auth | 3 | Complete |
+| 2. Agent Engine Core | 4 | Complete |
+| 3. Communication Layer | 2 | Complete |
+| 4. Memory System | 3 | Complete |
+| 5. MCP Integration | 3 | Complete |
+| 6. Skill System | 3 | Complete |
+| 7. Frontend | 4 | Complete |
 
 ## Accumulated Context
 
 ### Decisions
 
-All decisions logged in PROJECT.md Key Decisions table.
-Full decision history in archived milestones/v1.0-ROADMAP.md.
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- v1.1 research: python:3.12-slim-bookworm over Alpine (asyncpg/psycopg lack musl wheels)
+- v1.1 research: Gunicorn + UvicornWorker for production process management
+- v1.1 research: uv sync --frozen for reproducible Docker builds
+- v1.1 research: Nginx as unified entry point (SPA + API proxy + WebSocket proxy)
 
 ### Pending Todos
 
@@ -43,11 +68,13 @@ None.
 
 ### Blockers/Concerns
 
-- LangGraph `astream_events` v2 event shapes validated during Phase 3 implementation
-- LangGraph Store used in production for Phase 4 — monitoring needed
-- MCP transport auto-fallback tested against SSE servers — real MCP servers pending
-- Docker sandbox security hardening in place — deeper security audit deferred to v2
+- SkillSandbox network parameter needs code change in sandbox.py (network="nextflow" for DNS resolution)
+- WebSocket proxy through Nginx requires exact header configuration (Upgrade, Connection, proxy_http_version)
+- Alembic migration on container startup needs testing with existing migration chain
 
 ## Session Continuity
 
-Starting v1.1 milestone. Use `/gsd:plan-phase [N]` after requirements and roadmap are defined.
+Last session: 2026-03-31
+Stopped at: Roadmap created for v1.1 Docker Deployment milestone (Phases 8-10)
+Resume file: None
+Next step: `/gsd:plan-phase 8`

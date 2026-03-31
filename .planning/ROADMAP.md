@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-31)
   - [Archive](milestones/v1.0-ROADMAP.md) | [Requirements](milestones/v1.0-REQUIREMENTS.md)
+- 🚧 **v1.1 Docker Deployment** — Phases 8-10 (in progress)
 
 ## Phases
 
@@ -20,7 +21,70 @@
 
 </details>
 
+### 🚧 v1.1 Docker Deployment (In Progress)
+
+**Milestone Goal:** `docker-compose up` brings up the entire NextFlow stack (frontend + backend + infrastructure), ready for production use.
+
+- [ ] **Phase 8: Backend Containerization** — Package FastAPI backend into a production-ready Docker container
+- [ ] **Phase 9: Frontend + Nginx Containerization** — Build React SPA and serve behind Nginx reverse proxy
+- [ ] **Phase 10: Production Compose & Hardening** — Wire all services together with docker-compose.prod.yml and harden for production
+
+## Phase Details
+
+### Phase 8: Backend Containerization
+**Goal**: The FastAPI backend runs as a standalone Docker container with production-grade process management, automatic database migrations, and health monitoring
+**Depends on**: v1.0 complete (Phases 1-7)
+**Requirements**: BACK-01, BACK-02, BACK-03, BACK-04, BACK-05, BACK-06
+**Success Criteria** (what must be TRUE):
+  1. `docker build -t nextflow-backend .` succeeds and the resulting image runs the FastAPI application on port 8000
+  2. The backend container starts with a non-root user and Alembic migrations execute automatically before Uvicorn accepts requests
+  3. `docker inspect` shows the container's HEALTHCHECK hitting `/api/v1/health` and reporting healthy
+  4. Sending SIGTERM to the container completes in-flight requests before shutting down (no dropped connections)
+  5. `.dockerignore` prevents `.venv`, `__pycache__`, `.env`, `.pytest_cache`, and `.git` from entering the build context
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: Backend Dockerfile and .dockerignore
+- [ ] 08-02: Entrypoint script, health check, and graceful shutdown
+
+### Phase 9: Frontend + Nginx Containerization
+**Goal**: The React SPA is built inside Docker and served by Nginx, which also reverse-proxies API and WebSocket traffic to the backend
+**Depends on**: Phase 8
+**Requirements**: FRNT-01, FRNT-02, FRNT-03, FRNT-04, FRNT-05, FRNT-06
+**Success Criteria** (what must be TRUE):
+  1. `docker build -t nextflow-frontend .` produces an Nginx-based image serving the React SPA with client-side routing working (page refresh does not return 404)
+  2. Nginx proxies `/api/v1/` requests to the backend container and the REST API responds correctly through the proxy
+  3. WebSocket connections through `/ws/` route to the backend with token-by-token streaming visible in the browser
+  4. Static assets (JS, CSS, SVG) are served with gzip compression enabled
+  5. `.dockerignore` prevents `node_modules`, `dist`, and `.git` from entering the build context
+**Plans**: TBD
+**UI hint**: yes
+
+Plans:
+- [ ] 09-01: Frontend Dockerfile and .dockerignore
+- [ ] 09-02: Nginx configuration (SPA fallback, API proxy, WebSocket proxy, gzip)
+
+### Phase 10: Production Compose & Hardening
+**Goal**: A single `docker-compose up` command brings up the entire NextFlow platform with all services healthy, properly networked, and hardened for production traffic
+**Depends on**: Phase 8, Phase 9
+**Requirements**: COMP-01, COMP-02, COMP-03, COMP-04, COMP-05, COMP-06, CONF-01, CONF-02, CONF-03, HARD-01, HARD-02, HARD-03, HARD-04
+**Success Criteria** (what must be TRUE):
+  1. `docker-compose -f docker-compose.prod.yml up -d` starts all five services (backend, frontend-nginx, postgres, redis, minio) and all report healthy within 60 seconds
+  2. Services start in correct dependency order: PostgreSQL, Redis, MinIO become healthy before backend starts; Nginx starts after backend is ready
+  3. The existing `docker-compose.yml` (dev) continues to work unchanged — developer workflow is unaffected
+  4. Skill sandbox containers launched from the backend can resolve backend DNS on the compose network (skill tool invocation succeeds)
+  5. Nginx serves Vite-hashed assets with `Cache-Control: public, max-age=31536000, immutable` and includes security headers (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection) on all responses
+  6. Each service has explicit memory limits and `restart: unless-stopped` policy, and `docker-compose down` grants 30s graceful shutdown
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: Production docker-compose.yml with service dependencies, networking, and environment template
+- [ ] 10-02: Production hardening (caching headers, security headers, resource limits, structured logging)
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 8 → 9 → 10
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -31,3 +95,6 @@
 | 5. MCP Integration | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 6. Skill System | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 7. Frontend | v1.0 | 4/4 | Complete | 2026-03-31 |
+| 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
+| 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
+| 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |

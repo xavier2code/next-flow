@@ -63,37 +63,37 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BACK-01 | — | Pending |
-| BACK-02 | — | Pending |
-| BACK-03 | — | Pending |
-| BACK-04 | — | Pending |
-| BACK-05 | — | Pending |
-| BACK-06 | — | Pending |
-| FRNT-01 | — | Pending |
-| FRNT-02 | — | Pending |
-| FRNT-03 | — | Pending |
-| FRNT-04 | — | Pending |
-| FRNT-05 | — | Pending |
-| FRNT-06 | — | Pending |
-| COMP-01 | — | Pending |
-| COMP-02 | — | Pending |
-| COMP-03 | — | Pending |
-| COMP-04 | — | Pending |
-| COMP-05 | — | Pending |
-| COMP-06 | — | Pending |
-| CONF-01 | — | Pending |
-| CONF-02 | — | Pending |
-| CONF-03 | — | Pending |
-| HARD-01 | — | Pending |
-| HARD-02 | — | Pending |
-| HARD-03 | — | Pending |
-| HARD-04 | — | Pending |
+| BACK-01 | Phase 8 | Pending |
+| BACK-02 | Phase 8 | Pending |
+| BACK-03 | Phase 8 | Pending |
+| BACK-04 | Phase 8 | Pending |
+| BACK-05 | Phase 8 | Pending |
+| BACK-06 | Phase 8 | Pending |
+| FRNT-01 | Phase 9 | Pending |
+| FRNT-02 | Phase 9 | Pending |
+| FRNT-03 | Phase 9 | Pending |
+| FRNT-04 | Phase 9 | Pending |
+| FRNT-05 | Phase 9 | Pending |
+| FRNT-06 | Phase 9 | Pending |
+| COMP-01 | Phase 10 | Pending |
+| COMP-02 | Phase 10 | Pending |
+| COMP-03 | Phase 10 | Pending |
+| COMP-04 | Phase 10 | Pending |
+| COMP-05 | Phase 10 | Pending |
+| COMP-06 | Phase 10 | Pending |
+| CONF-01 | Phase 10 | Pending |
+| CONF-02 | Phase 10 | Pending |
+| CONF-03 | Phase 10 | Pending |
+| HARD-01 | Phase 10 | Pending |
+| HARD-02 | Phase 10 | Pending |
+| HARD-03 | Phase 10 | Pending |
+| HARD-04 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial definition*
+*Last updated: 2026-03-31 after roadmap creation (traceability mapped)*
