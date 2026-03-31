@@ -3,6 +3,7 @@ import LoginPage from '@/components/auth/LoginPage'
 import RegisterPage from '@/components/auth/RegisterPage'
 import ProtectedRoute from '@/pages/ProtectedRoute'
 import AppShell from '@/components/layout/AppShell'
+import ChatPage from '@/pages/ChatPage'
 
 function App() {
   return (
@@ -11,8 +12,8 @@ function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route path="/" element={<div className="flex h-full items-center justify-center text-muted-foreground">选择或创建一个对话开始聊天</div>} />
-          <Route path="/conversations/:id" element={<div className="flex h-full items-center justify-center text-muted-foreground">对话加载中...</div>} />
+          <Route path="/" element={<ChatPage />} />
+          <Route path="/conversations/:id" element={<ChatPage />} />
           <Route path="/manage/agents" element={<div className="flex h-full items-center justify-center text-muted-foreground">智能体管理</div>} />
           <Route path="/manage/skills" element={<div className="flex h-full items-center justify-center text-muted-foreground">技能管理</div>} />
           <Route path="/manage/servers" element={<div className="flex h-full items-center justify-center text-muted-foreground">MCP 服务器管理</div>} />
