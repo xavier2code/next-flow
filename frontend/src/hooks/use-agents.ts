@@ -1,20 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import type { Agent, PaginatedResponse } from '@/types/api'
-
-interface AgentListResult {
-  data: Agent[]
-  meta: {
-    cursor: string | null
-    has_more: boolean
-  }
-}
+import type { Agent } from '@/types/api'
 
 export function useAgents() {
-  return useQuery<AgentListResult>({
+  return useQuery<Agent[]>({
     queryKey: ['agents'],
     queryFn: async () => {
-      return apiClient.get<PaginatedResponse<Agent>>('/api/v1/agents')
+      return apiClient.get<Agent[]>('/api/v1/agents')
     },
   })
 }
