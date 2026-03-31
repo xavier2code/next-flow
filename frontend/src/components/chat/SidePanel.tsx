@@ -40,15 +40,22 @@ export default function SidePanel({ messages }: SidePanelProps) {
       }))
   )
 
-  // Extract all tool invocations from messages, sorted by message order
+  // Extract all tool invocations from message parts, sorted by message order
   const toolEntries: ToolEntry[] = messages.flatMap((msg) =>
-    (msg.toolInvocations ?? []).map((inv) => ({
-      id: inv.toolCallId,
-      entryType: inv.state === 'result' ? ('tool_result' as const) : ('tool_call' as const),
-      toolName: inv.toolName,
-      args: typeof inv.args === 'object' ? (inv.args as Record<string, unknown>) : undefined,
-      result: inv.state === 'result' ? inv.result : undefined,
-    }))
+    msg.parts
+      .filter((p): p is typeof p & { toolCallId: string; toolName: string } =>
+        p.type === 'dynamic-tool' || p.type.startsWith('tool-')
+      )
+      .map((part) => {
+        const inv = part as Record<string, unknown>
+        return {
+          id: String(inv.toolCallId ?? ''),
+          entryType: inv.state === 'result' ? ('tool_result' as const) : ('tool_call' as const),
+          toolName: String(inv.toolName ?? ''),
+          args: typeof inv.args === 'object' ? (inv.args as Record<string, unknown>) : undefined,
+          result: inv.state === 'result' ? inv.result : undefined,
+        }
+      })
   )
 
   const hasEntries = reasoningEntries.length > 0 || toolEntries.length > 0

@@ -6,8 +6,16 @@ interface ChatMessageProps {
   message: UIMessage
 }
 
+function getTextContent(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map((p) => p.text)
+    .join('')
+}
+
 export default function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user'
+  const text = getTextContent(message)
 
   // For user messages, display content directly
   // For assistant messages, useChat handles streaming -- just render content
@@ -35,9 +43,9 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         }`}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+          <p className="whitespace-pre-wrap text-sm">{text}</p>
         ) : (
-          <MarkdownRenderer content={message.content} />
+          <MarkdownRenderer content={text} />
         )}
       </div>
     </div>

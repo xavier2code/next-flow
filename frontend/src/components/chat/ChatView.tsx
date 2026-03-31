@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { useNavigate } from 'react-router'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
@@ -41,21 +42,24 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     ? `/api/v1/conversations/${activeConversationId}/chat`
     : undefined
 
-  const { messages, sendMessage, reload, stop, status, error } = useChat({
-    api: chatApi,
-    fetch: async (url, options) => {
-      // Get fresh token for each request via apiClient's auth callbacks
-      const token = localStorage.getItem('access_token')
-      return fetch(url, {
-        ...options,
-        headers: {
-          ...options?.headers,
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    },
-    onError: (err) => {
+  const { messages, sendMessage, regenerate, stop, status, error } = useChat({
+    transport: chatApi
+      ? new DefaultChatTransport({
+          api: chatApi,
+          fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+            const token = localStorage.getItem('access_token')
+            return fetch(input, {
+              ...init,
+              headers: {
+                ...init?.headers,
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            })
+          },
+        })
+      : undefined,
+    onError: (err: Error) => {
       console.error('Chat error:', err)
     },
   })
@@ -76,8 +80,8 @@ export default function ChatView({ conversationId }: ChatViewProps) {
 
   // Auto-open side panel when tool invocations appear
   useEffect(() => {
-    const hasToolInvocations = messages.some(
-      (m) => m.toolInvocations && m.toolInvocations.length > 0
+    const hasToolInvocations = messages.some((m) =>
+      m.parts.some((p) => p.type === 'dynamic-tool' || p.type.startsWith('tool-'))
     )
     if (hasToolInvocations) setSidePanelOpen(true)
   }, [messages, setSidePanelOpen])
@@ -108,7 +112,7 @@ export default function ChatView({ conversationId }: ChatViewProps) {
         // After navigation, the useChat api will update via activeConversationId
         // Send the message on next tick so the hook reconfigures with the new conversation
         setTimeout(() => {
-          sendMessage({ content: text })
+          sendMessage({ text })
         }, 0)
         return
       } catch {
@@ -117,7 +121,7 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     }
 
     // Step 2: Send via useChat
-    sendMessage({ content: text })
+    sendMessage({ text })
   }
 
   const hasMessages = messages.length > 0
@@ -135,7 +139,7 @@ export default function ChatView({ conversationId }: ChatViewProps) {
         <div className="flex items-center gap-2">
           {status !== 'streaming' && status !== 'submitted' && messages.length > 0 && (
             <button
-              onClick={() => reload()}
+              onClick={() => regenerate()}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               <RefreshCw className="inline-block h-3.5 w-3.5" />
