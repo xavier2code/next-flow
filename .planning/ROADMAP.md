@@ -45,7 +45,7 @@
 
 Plans:
 - [x] 08-01: Backend Dockerfile and .dockerignore
-- [ ] 08-02: Entrypoint script, health check, and graceful shutdown
+- [x] 08-02: Entrypoint script, health check, and graceful shutdown
 
 ### Phase 9: Frontend + Nginx Containerization
 **Goal**: The React SPA is built inside Docker and served by Nginx, which also reverse-proxies API and WebSocket traffic to the backend
