@@ -2,23 +2,49 @@
 
 通用智能体（Agent）平台 — 可扩展、高性能、易集成。
 
+NextFlow 提供完整的 Agent 编排能力：基于 LangGraph 的有状态工作流引擎、标准化 MCP 工具集成、可插拔技能系统、分层记忆，以及基于 Vercel AI SDK 的流式对话前端。面向智能客服、自动化任务编排、知识库问答及企业 AI 应用集成等场景。
+
 ## 架构概览
 
-- **前端**: React 19 + TypeScript + Vite 7 + shadcn/ui + Zustand + TanStack Query
-- **后端**: Python 3.12 + FastAPI + LangGraph + SQLAlchemy 2.x (async)
-- **数据库**: PostgreSQL 16 (pgvector) + Redis 7 + Qdrant
-- **协议**: MCP (Model Context Protocol) 工具集成标准
-- **部署**: Docker Compose
+```
+┌─────────────────────────────────────────────────────┐
+│                    Frontend (SPA)                    │
+│          React 19 + Vite 7 + shadcn/ui              │
+│        Vercel AI SDK (SSE Data Stream v2)            │
+└──────────────────────┬──────────────────────────────┘
+                       │ REST + SSE
+┌──────────────────────▼──────────────────────────────┐
+│                   FastAPI Gateway                     │
+│            JWT Auth · Cursor Pagination               │
+├──────────┬──────────┬──────────┬────────────────────┤
+│  Agent   │  Memory  │   MCP    │      Skill         │
+│  Engine  │  System  │ Manager  │    Service          │
+│ LangGraph│ 3-Layer  │ Protocol │  Docker Sandbox     │
+├──────────┴──────────┴──────────┴────────────────────┤
+│  PostgreSQL 16  ·  Redis 7  ·  MinIO  ·  Qdrant      │
+└─────────────────────────────────────────────────────┘
+```
+
+### 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| **前端** | React 19 + TypeScript 5.7 + Vite 7 + shadcn/ui + Zustand 5 + TanStack Query |
+| **后端** | Python 3.12 + FastAPI 0.135 + LangGraph 1.1 + SQLAlchemy 2.x (async) |
+| **数据库** | PostgreSQL 16 + Redis 7 + Qdrant (向量) + MinIO (对象存储) |
+| **协议** | MCP (Model Context Protocol) · SSE Data Stream Protocol v2 |
+| **部署** | Docker Compose · Nginx 反向代理 |
 
 ## 核心功能
 
-- **Agent 引擎** — 基于 LangGraph 的有状态图工作流，支持分析-规划-执行-反思-响应循环
-- **对话管理** — WebSocket 实时通信，流式输出
-- **技能系统** — 可插拔技能包，Docker 沙箱隔离执行
-- **MCP 集成** — 标准化工具发现、调用和会话管理
-- **分层记忆** — 短期对话记忆 + 长期语义记忆
-- **多 LLM 支持** — OpenAI / Anthropic / Ollama / vLLM，通过 LangChain 统一接入
-- **认证授权** — JWT + RBAC
+- **Agent 引擎** — LangGraph 4 节点工作流（Analyze → Plan → Execute → Respond），PostgreSQL checkpointer 持久化
+- **流式对话** — SSE Data Stream Protocol v2，支持 reasoning 展示、消息重新生成
+- **多 LLM 支持** — OpenAI / Anthropic / Ollama / vLLM，通过 LangChain 统一接入，支持流式输出
+- **分层记忆** — 短期（Redis 滑动窗口 + LLM 压缩）+ 长期（LangGraph Store 语义搜索）+ 工作记忆（AgentState）
+- **MCP 集成** — 多服务器连接、工具发现（namespaced 注册）、Streamable HTTP/SSE 自动回退、健康监控
+- **技能系统** — SKILL.md + ZIP 包格式验证、Docker 沙箱隔离执行、MinIO 存储
+- **认证** — JWT + refresh token rotation + argon2 密码哈希
+- **管理面板** — Agent / Skills / MCP 服务管理 + 用户设置
 
 ## 快速开始
 
@@ -83,34 +109,32 @@ npm run dev
 
 ```
 next-flow/
-├── backend/                  # Python 后端
+├── backend/
 │   ├── app/
-│   │   ├── api/v1/          # REST API 端点
-│   │   ├── api/ws/          # WebSocket 聊天
-│   │   ├── core/            # 配置、安全、日志
-│   │   ├── db/              # 数据库会话、Redis
-│   │   ├── models/          # SQLAlchemy 模型
-│   │   ├── schemas/         # Pydantic 模式
-│   │   └── services/        # 业务逻辑
-│   │       ├── agent_engine/ # LangGraph Agent 编排
-│   │       ├── mcp/         # MCP 协议集成
-│   │       ├── memory/      # 分层记忆系统
-│   │       ├── skill/       # 技能系统
-│   │       └── tool_registry/ # 工具注册
-│   ├── alembic/             # 数据库迁移
-│   └── tests/               # 测试套件
-├── frontend/                 # React 前端
+│   │   ├── api/v1/              # REST 端点 (auth, chat, agents, skills, mcp_servers, settings)
+│   │   ├── core/                # 配置、安全、日志
+│   │   ├── db/                  # 数据库会话、Redis 连接
+│   │   ├── models/              # SQLAlchemy 模型
+│   │   ├── schemas/             # Pydantic 请求/响应模式
+│   │   └── services/
+│   │       ├── agent_engine/    # LangGraph Agent 编排 (4-node pipeline)
+│   │       ├── mcp/             # MCP 协议集成 (Client, Manager, 工具发现)
+│   │       ├── memory/          # 三层记忆系统
+│   │       ├── skill/           # 技能系统 (验证、沙箱执行)
+│   │       └── tool_registry/   # 统一工具注册
+│   ├── alembic/                 # 数据库迁移
+│   └── tests/
+├── frontend/
 │   └── src/
-│       ├── components/      # UI 组件
-│       │   ├── auth/        # 登录注册
-│       │   ├── chat/        # 聊天界面
-│       │   ├── layout/      # 布局
-│       │   ├── management/  # 管理页面
-│       │   └── settings/    # 设置页面
-│       ├── stores/          # Zustand 状态
-│       ├── hooks/           # React Query hooks
-│       └── types/           # TypeScript 类型
-└── docker-compose.yml       # 基础设施服务
+│       ├── components/          # UI 组件 (auth, chat, layout, management, settings, shared)
+│       ├── pages/               # 页面 (ChatPage, ProtectedRoute)
+│       ├── hooks/               # React Query + 自定义 hooks
+│       ├── stores/              # Zustand 状态管理
+│       ├── lib/                 # 工具函数
+│       └── types/               # TypeScript 类型定义
+├── backend/Dockerfile           # 后端多阶段构建 (python:3.12-slim, Gunicorn)
+├── frontend/Dockerfile          # 前端多阶段构建 (Node 22 → Nginx)
+└── docker-compose.yml           # 基础设施 + 应用服务
 ```
 
 ## API 文档
@@ -118,6 +142,12 @@ next-flow/
 后端启动后访问：
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
+
+## Roadmap
+
+- [x] **v1.0** — MVP: 认证、Agent 引擎、对话管理、记忆系统、MCP 集成、技能系统、前端 UI
+- [ ] **v1.1** — Docker 部署就绪: 生产级容器化、Nginx 反向代理、多环境配置
+- [ ] **v2.0** — RBAC、RAG 知识库、并行工具执行、Human-in-the-loop、多租户、Skill 市场
 
 ## License
 
