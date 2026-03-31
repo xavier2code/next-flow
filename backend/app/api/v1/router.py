@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.agents import router as agents_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.chat import router as chat_router
 from app.api.v1.conversations import router as conversations_router
 from app.api.v1.health import router as health_router
 from app.api.v1.mcp_servers import router as mcp_servers_router
@@ -16,5 +17,6 @@ router.include_router(conversations_router)
 router.include_router(agents_router)
 router.include_router(settings_router)
 router.include_router(messages_router)
+router.include_router(chat_router)
 router.include_router(mcp_servers_router)
 router.include_router(skills_router)
