@@ -55,6 +55,7 @@ export function useToggleSkill() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['skills'] })
       queryClient.invalidateQueries({ queryKey: ['skill', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['skill-tools', variables.id] })
     },
   })
 }

@@ -10,6 +10,9 @@ import json
 import os
 from dataclasses import dataclass
 
+# Docker SDK 7.x uses nano_cpus (billionths of a CPU) instead of cpus
+NANO_CPUS_PER_CORE = 1_000_000_000
+
 import docker
 import structlog
 
@@ -61,33 +64,38 @@ class SkillSandbox:
         """
         permissions = permissions or {}
         container_name = f"nextflow-skill-{skill_name}"
-        network_mode = "bridge" if permissions.get("network") else "none"
+        use_network = permissions.get("network", False)
+        network_mode = "bridge" if use_network else "none"
         # When running inside Docker Compose, connect skill containers to
         # the compose network for DNS resolution (e.g., backend -> backend:8000)
-        network_name = self._network if self._network else None
+        # Only set network when using bridge mode (cannot combine with network_mode)
+        network_name = self._network if (use_network and self._network) else None
 
-        container = self._docker.containers.run(
-            image="nextflow-skill-base:latest",
-            command=["python", "/sidecar/sidecar.py"],
-            volumes={extract_path: {"bind": "/skill", "mode": "ro"}},
-            mem_limit=self._settings.skill_sandbox_memory,
-            cpus=self._settings.skill_sandbox_cpus,
-            pids_limit=self._settings.skill_sandbox_pids_limit,
-            security_opt=["no-new-privileges"],
-            cap_drop=["ALL"],
-            network_mode=network_mode,
-            network=network_name,
-            read_only=True,
-            tmpfs={"/tmp": "size=50m"},
-            detach=True,
-            name=container_name,
-            auto_remove=False,
-            user="1000:1000",
-            labels={
+        run_kwargs: dict = {
+            "image": "nextflow-skill-base:latest",
+            "command": ["python", "/sidecar/sidecar.py"],
+            "volumes": {extract_path: {"bind": "/skill", "mode": "ro"}},
+            "mem_limit": self._settings.skill_sandbox_memory,
+            "nano_cpus": int(self._settings.skill_sandbox_cpus * NANO_CPUS_PER_CORE),
+            "pids_limit": self._settings.skill_sandbox_pids_limit,
+            "security_opt": ["no-new-privileges"],
+            "cap_drop": ["ALL"],
+            "network_mode": network_mode,
+            "read_only": True,
+            "tmpfs": {"/tmp": "size=50m"},
+            "detach": True,
+            "name": container_name,
+            "auto_remove": False,
+            "user": "1000:1000",
+            "labels": {
                 "nextflow.managed": "true",
                 "nextflow.skill": skill_name,
             },
-        )
+        }
+        if network_name:
+            run_kwargs["network"] = network_name
+
+        container = self._docker.containers.run(**run_kwargs)
         # Container hostname equals container_name in Docker network
         url = f"http://{container_name}:8080"
         logger.info(
@@ -144,7 +152,7 @@ class SkillSandbox:
                 command=["python", f"/skill/script/{tool_file}"],
                 volumes={extract_path: {"bind": "/skill", "mode": "ro"}},
                 mem_limit=self._settings.skill_sandbox_memory,
-                cpus=self._settings.skill_sandbox_cpus,
+                nano_cpus=int(self._settings.skill_sandbox_cpus * NANO_CPUS_PER_CORE),
                 pids_limit=self._settings.skill_sandbox_pids_limit,
                 security_opt=["no-new-privileges"],
                 cap_drop=["ALL"],
