@@ -183,7 +183,7 @@ export default function AgentDetail({ agentId, isNew, onCreated, onCancel }: Age
             <Button onClick={handleSave} disabled={!name.trim()}>
               {isNew ? '创建智能体' : '保存'}
             </Button>
-            {isNew && onCancel && (
+            {onCancel && (
               <Button variant="outline" onClick={onCancel}>
                 取消
               </Button>

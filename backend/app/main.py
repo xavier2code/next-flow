@@ -136,6 +136,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     set_analyze_skill_manager(skill_manager)
     logger.info("skill_manager_initialized")
 
+    # Wire tool_registry into plan and execute nodes
+    from app.services.agent_engine.nodes.plan import set_tool_registry as set_plan_tool_registry
+    from app.services.agent_engine.nodes.execute import set_tool_registry as set_execute_tool_registry
+
+    set_plan_tool_registry(registry)
+    set_execute_tool_registry(registry)
+
+    # Build and compile the agent graph
+    from app.services.agent_engine import build_graph
+
+    app.state.graph = build_graph(
+        checkpointer=app.state.checkpointer,
+        store=app.state.store,
+    )
+    logger.info("agent_graph_initialized")
+
     # Redis pub/sub listener for cross-worker WebSocket broadcasting
     pubsub_task = asyncio.create_task(
         start_pubsub_listener(

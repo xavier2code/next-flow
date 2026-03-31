@@ -1,23 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import type { Conversation, PaginatedResponse } from '@/types/api'
-
-interface ConversationListResult {
-  data: Conversation[]
-  meta: {
-    cursor: string | null
-    has_more: boolean
-  }
-}
+import type { Conversation } from '@/types/api'
 
 export function useConversations(cursor?: string) {
-  return useQuery<ConversationListResult>({
+  return useQuery<Conversation[]>({
     queryKey: cursor ? ['conversations', cursor] : ['conversations'],
     queryFn: async () => {
       const params = new URLSearchParams()
       params.set('limit', '20')
       if (cursor) params.set('cursor', cursor)
-      return apiClient.get<PaginatedResponse<Conversation>>(
+      return apiClient.get<Conversation[]>(
         `/api/v1/conversations?${params.toString()}`,
       )
     },

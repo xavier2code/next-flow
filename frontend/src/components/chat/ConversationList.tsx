@@ -26,7 +26,7 @@ export default function ConversationList() {
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const conversations = data?.data ?? []
+  const conversations = data ?? []
 
   const handleCreate = async () => {
     try {

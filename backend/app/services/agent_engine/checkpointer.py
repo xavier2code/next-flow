@@ -28,5 +28,6 @@ async def create_checkpointer(database_url: str) -> dict:
     # langgraph-checkpoint-postgres >= 3.0 returns an async context manager
     ctx = AsyncPostgresSaver.from_conn_string(conn_string)
     checkpointer = await ctx.__aenter__()
+    await checkpointer.setup()
     logger.info("checkpointer_ready")
     return {"checkpointer": checkpointer, "ctx": ctx}

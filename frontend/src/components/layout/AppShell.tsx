@@ -24,8 +24,13 @@ function useSyncNavFromRoute() {
 
 export default function AppShell() {
   const accessToken = useAuthStore((s) => s.accessToken)
-  useWebSocket(accessToken)
+  const setConnectionStatus = useUiStore((s) => s.setConnectionStatus)
+  const { connectionStatus } = useWebSocket(accessToken)
   useSyncNavFromRoute()
+
+  useEffect(() => {
+    setConnectionStatus(connectionStatus)
+  }, [connectionStatus, setConnectionStatus])
 
   return (
     <div className="flex h-screen">

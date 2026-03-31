@@ -9,8 +9,18 @@ from langchain_core.messages import AIMessage
 
 from app.services.agent_engine.llm import get_llm
 from app.services.agent_engine.state import AgentState
+from app.services.tool_registry import ToolRegistry
 
 logger = structlog.get_logger()
+
+# Module-level reference set during lifespan initialization.
+_tool_registry: ToolRegistry | None = None
+
+
+def set_tool_registry(registry: ToolRegistry) -> None:
+    """Set the module-level tool_registry reference."""
+    global _tool_registry
+    _tool_registry = registry
 
 
 async def plan_node(state: AgentState) -> dict:
@@ -23,13 +33,29 @@ async def plan_node(state: AgentState) -> dict:
     The LLM is created via get_llm() factory using agent config from graph config.
     """
     try:
-        # TODO: Get agent-specific config from graph config (future enhancement)
-        # For now, use default LLM config from Settings
         llm = get_llm()
+        tools_bound = False
 
-        # Simple invocation: pass message history to LLM
-        # Tool binding will be added when Tool Registry is injected
-        response = await llm.ainvoke(state["messages"])
+        # Bind tools if registry is available
+        if _tool_registry:
+            tool_schemas = _tool_registry.list_tools()
+            if tool_schemas:
+                try:
+                    llm = llm.bind_tools(tool_schemas)
+                    tools_bound = True
+                except Exception as bind_err:
+                    logger.warning("bind_tools_failed", error=str(bind_err))
+
+        try:
+            response = await llm.ainvoke(state["messages"])
+        except Exception as invoke_err:
+            # If invocation failed with tools bound, retry without tools
+            if tools_bound:
+                logger.warning("invoke_with_tools_failed, retrying without tools", error=str(invoke_err))
+                llm = get_llm()
+                response = await llm.ainvoke(state["messages"])
+            else:
+                raise
 
         return {
             "messages": [response],

@@ -154,9 +154,12 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
             messages: [...state.messages, finalMsg],
             streamingMessage: null,
             isStreaming: false,
+            thinkingEntries: [],
+            toolCallEntries: [],
+            toolResultEntries: [],
           }))
         } else {
-          set({ isStreaming: false })
+          set({ isStreaming: false, thinkingEntries: [], toolCallEntries: [], toolResultEntries: [] })
         }
         break
       }

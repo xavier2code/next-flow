@@ -1,13 +1,17 @@
 """Message endpoint: POST to accept user messages and trigger agent execution."""
 
 import asyncio
+import json
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.api.ws.event_mapper import map_stream_events
+from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
+from app.db.session import async_session_factory
 from app.models.user import User
 from app.schemas.message import MessageCreate
 from app.services.conversation_service import ConversationService
@@ -18,22 +22,75 @@ router = APIRouter(tags=["messages"])
 
 
 async def _trigger_agent_execution(
-    conversation_id: str, user_id: str, message: str
+    graph,
+    redis_client,
+    conversation_id: str,
+    user_id: str,
+    message: str,
+    pubsub_prefix: str,
 ) -> None:
-    """Placeholder for agent execution pipeline (wired in Plan 02).
+    """Run the LangGraph agent pipeline and stream events via Redis pub/sub.
 
-    Will invoke graph.astream_events and publish events to Redis pub/sub.
+    Flow:
+    1. Stream events from map_stream_events()
+    2. Publish each event to Redis channel nextflow:ws:events:{user_id}
+    3. Collect assistant response text
+    4. Save assistant message to DB
     """
-    logger.info(
-        "trigger_agent_execution",
-        extra={"conversation_id": conversation_id, "user_id": user_id},
-    )
+    channel = f"{pubsub_prefix}:{user_id}"
+    config = {
+        "configurable": {
+            "thread_id": conversation_id,
+        },
+    }
+
+    assistant_content_parts: list[str] = []
+
+    try:
+        async for event in map_stream_events(
+            graph=graph,
+            user_input=message,
+            thread_id=conversation_id,
+            config=config,
+        ):
+            # Publish event to Redis for WebSocket delivery
+            await redis_client.publish(channel, json.dumps(event, ensure_ascii=False))
+
+            # Collect text chunks for DB persistence
+            if event.get("type") == "chunk":
+                content = event.get("data", {}).get("content", "")
+                if content:
+                    assistant_content_parts.append(content)
+
+        # Save assistant response to database
+        full_response = "".join(assistant_content_parts)
+        if full_response:
+            async with async_session_factory() as db:
+                try:
+                    await ConversationService.add_message(
+                        db, conversation_id, role="assistant", content=full_response
+                    )
+                    await db.commit()
+                    logger.info("assistant_message_saved", conversation_id=conversation_id)
+                except Exception as db_err:
+                    logger.error("assistant_message_save_failed", error=str(db_err))
+                    await db.rollback()
+
+    except Exception as e:
+        logger.error("agent_execution_failed", error=str(e), conversation_id=conversation_id)
+        # Send error event to client
+        error_event = json.dumps(
+            {"type": "done", "data": {"error": str(e)}},
+            ensure_ascii=False,
+        )
+        await redis_client.publish(channel, error_event)
 
 
 @router.post("/conversations/{conversation_id}/messages", status_code=202)
 async def send_message(
     conversation_id: str,
     data: MessageCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
@@ -49,7 +106,14 @@ async def send_message(
     await db.commit()
 
     asyncio.create_task(
-        _trigger_agent_execution(conversation_id, str(current_user.id), data.content)
+        _trigger_agent_execution(
+            graph=request.app.state.graph,
+            redis_client=request.app.state.redis,
+            conversation_id=conversation_id,
+            user_id=str(current_user.id),
+            message=data.content,
+            pubsub_prefix=settings.redis_pubsub_prefix,
+        )
     )
 
     return Response(status_code=202)

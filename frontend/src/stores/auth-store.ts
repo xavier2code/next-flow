@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { User, TokenResponse } from '@/types/api'
 import { apiClient, startTokenRefreshTimer, stopTokenRefreshTimer, registerAuthCallbacks } from '@/lib/api-client'
 
@@ -20,7 +21,9 @@ interface AuthActions {
   clearAuth: () => void
 }
 
-export const useAuthStore = create<AuthState & AuthActions>()((set, get) => {
+export const useAuthStore = create<AuthState & AuthActions>()(
+  persist(
+    (set, get) => {
   // Register auth callbacks for api-client to avoid circular imports
   registerAuthCallbacks({
     getAccessToken: () => get().accessToken,
@@ -138,4 +141,13 @@ export const useAuthStore = create<AuthState & AuthActions>()((set, get) => {
       })
     },
   }
-})
+    },
+    {
+      name: 'nextflow-auth',
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+    },
+  ),
+)

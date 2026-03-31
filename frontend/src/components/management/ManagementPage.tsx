@@ -45,7 +45,7 @@ export default function ManagementPage() {
                 agentId={isCreatingAgent ? null : selectedAgentId}
                 isNew={isCreatingAgent}
                 onCreated={(id) => { setSelectedAgentId(id); setIsCreatingAgent(false) }}
-                onCancel={() => setIsCreatingAgent(false)}
+                onCancel={() => { setIsCreatingAgent(false); setSelectedAgentId(null) }}
               />
             </div>
           </div>

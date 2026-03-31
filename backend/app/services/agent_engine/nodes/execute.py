@@ -12,8 +12,17 @@ from app.services.tool_registry import ToolRegistry, ToolNotFoundError
 
 logger = structlog.get_logger()
 
+# Module-level reference set during lifespan initialization.
+_tool_registry: ToolRegistry | None = None
 
-async def execute_node(state: AgentState, *, tool_registry: ToolRegistry | None = None) -> dict:
+
+def set_tool_registry(registry: ToolRegistry) -> None:
+    """Set the module-level tool_registry reference."""
+    global _tool_registry
+    _tool_registry = registry
+
+
+async def execute_node(state: AgentState) -> dict:
     """Execute tool calls from the Plan node's AI message.
 
     Processes each tool_call sequentially (D-03). Routes through Tool Registry.
@@ -30,7 +39,7 @@ async def execute_node(state: AgentState, *, tool_registry: ToolRegistry | None 
         logger.warning("execute_node_no_tool_calls")
         return {"plan": "No tool calls to execute."}
 
-    if tool_registry is None:
+    if _tool_registry is None:
         logger.error("execute_node_no_registry")
         # Return error messages for all pending tool calls
         for tool_call in last_message.tool_calls:
@@ -47,7 +56,7 @@ async def execute_node(state: AgentState, *, tool_registry: ToolRegistry | None 
         tool_args = tool_call.get("args", {})
         try:
             logger.info("tool_executing", tool=tool_name)
-            result = await tool_registry.invoke(tool_name, tool_args)
+            result = await _tool_registry.invoke(tool_name, tool_args)
             tool_messages.append(
                 ToolMessage(content=str(result), tool_call_id=tool_call["id"])
             )

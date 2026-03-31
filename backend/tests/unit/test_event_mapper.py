@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from langchain_core.messages import AIMessageChunk
 
-from app.api.ws.event_mapper import map_stream_events
+from app.api.ws.event_mapper import ThinkTagFilter, map_stream_events
 
 
 # ---------------------------------------------------------------------------
@@ -228,3 +228,139 @@ async def test_unmapped_event_skipped() -> None:
     ])
     events = await _collect(graph)
     assert len(events) == 0
+
+
+# ---------------------------------------------------------------------------
+# ThinkTagFilter — <think...</think stripping
+# ---------------------------------------------------------------------------
+
+
+class TestThinkTagFilter:
+    """Tests for the ThinkTagFilter state machine."""
+
+    # -- Complete think tag in a single chunk --
+
+    def test_complete_think_tag_stripped(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("<think reasoning here</thinkHello!")
+        assert len(events) == 2
+        assert events[0]["type"] == "thinking"
+        assert events[0]["data"]["content"] == "reasoning here"
+        assert events[1]["type"] == "chunk"
+        assert events[1]["data"]["content"] == "Hello!"
+
+    def test_think_tag_only(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("<think let me think</think")
+        assert len(events) == 1
+        assert events[0]["type"] == "thinking"
+        assert events[0]["data"]["content"] == "let me think"
+
+    def test_think_tag_case_insensitive(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("<THINK reasoning</THINK>answer")
+        assert len(events) == 2
+        assert events[0]["type"] == "thinking"
+        assert events[1]["type"] == "chunk"
+        assert events[1]["data"]["content"] == "answer"
+
+    def test_think_tag_with_whitespace(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("<think > spaces </think >answer")
+        assert len(events) == 2
+        assert events[0]["type"] == "thinking"
+        assert events[0]["data"]["content"] == "spaces"
+        assert events[1]["type"] == "chunk"
+
+    # -- Think tag split across chunks --
+
+    def test_think_tag_split_open_tag(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("before<th")
+        # "<th" is a partial match of "<think", held in buffer
+        assert events == [{"type": "chunk", "data": {"content": "before"}}]
+
+        events2 = f.process("ink>reasoning</think")
+        assert events2[0]["type"] == "thinking"
+        assert events2[0]["data"]["content"] == "reasoning"
+
+    def test_think_tag_split_close_tag(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("<thinkreasoning")
+        assert len(events) == 1
+        assert events[0]["type"] == "thinking"
+        assert events[0]["data"]["content"] == "reasoning"
+
+        events2 = f.process("</thinkanswer")
+        assert len(events2) == 1
+        assert events2[0]["type"] == "chunk"
+        assert events2[0]["data"]["content"] == "answer"
+
+    # -- Think tag in the middle of content --
+
+    def test_think_in_middle(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("Hello <think secret reasoning</think World!")
+        assert len(events) == 3
+        assert events[0]["type"] == "chunk"
+        assert events[0]["data"]["content"] == "Hello "
+        assert events[1]["type"] == "thinking"
+        assert events[1]["data"]["content"] == "secret reasoning"
+        assert events[2]["type"] == "chunk"
+        assert events[2]["data"]["content"] == "World!"
+
+    # -- No think tag (passthrough) --
+
+    def test_no_think_tag_passthrough(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("Just a normal response.")
+        assert len(events) == 1
+        assert events[0]["type"] == "chunk"
+        assert events[0]["data"]["content"] == "Just a normal response."
+
+    # -- Flush --
+
+    def test_flush_emits_remaining_chunk(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("partial")
+        assert events[0]["type"] == "chunk"
+        assert f.flush() == []
+
+    def test_think_content_emitted_eagerly(self) -> None:
+        f = ThinkTagFilter()
+        events = f.process("<thinkunclosed thinking")
+        # Partial thinking content is eagerly emitted for real-time display
+        assert len(events) == 1
+        assert events[0]["type"] == "thinking"
+        assert events[0]["data"]["content"] == "unclosed thinking"
+        # flush has nothing left since content was already emitted
+        assert f.flush() == []
+
+    def test_flush_emits_partial_buffer(self) -> None:
+        f = ThinkTagFilter()
+        # Partial <think at end of buffer — stream ended mid-tag
+        f.process("hello<th")
+        remaining = f.flush()
+        assert len(remaining) == 1
+        assert remaining[0]["type"] == "chunk"
+        assert remaining[0]["data"]["content"] == "<th"
+
+    # -- Integration: think tag filtered in map_stream_events --
+
+    async def test_think_tag_filtered_in_stream(self) -> None:
+        graph = _mock_graph([
+            make_event(
+                "on_chat_model_stream",
+                data={"chunk": AIMessageChunk(content="<think hmm</thinkAnswer")},
+            ),
+            make_event("on_chain_end", parent_ids=[]),
+        ])
+        events = await _collect(graph)
+        types = [e["type"] for e in events]
+        assert "thinking" in types
+        assert "chunk" in types
+        # The chunk should NOT contain <think tags
+        chunk_contents = [
+            e["data"]["content"] for e in events if e["type"] == "chunk"
+        ]
+        assert all("<think" not in c and "</think" not in c for c in chunk_contents)
