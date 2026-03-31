@@ -87,6 +87,18 @@ class ConversationService:
         return conversation
 
     @staticmethod
+    async def list_messages(
+        db: AsyncSession,
+        conversation_id: str,
+    ) -> list[Message]:
+        result = await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
     async def add_message(
         db: AsyncSession,
         conversation_id: str,

@@ -37,25 +37,27 @@ export default function ChatView({
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set conversation on mount or when URL changes
+  // Load messages when conversation changes (via sidebar click or URL navigation)
   useEffect(() => {
-    if (conversationId && conversationId !== currentConversationId) {
+    if (!conversationId) return
+
+    if (conversationId !== currentConversationId) {
       setCurrentConversation(conversationId)
-      // Load messages for this conversation (placeholder - simple API call)
-      apiClient
-        .get<{ id: string; conversation_id: string; role: string; content: string; created_at: string }[]>(
-          `/api/v1/conversations/${conversationId}/messages`,
-        )
-        .then((data) => {
-          if (Array.isArray(data)) {
-            useChatStore.getState().setMessages(data)
-          }
-        })
-        .catch(() => {
-          // Conversation may not exist or messages endpoint may vary
-        })
     }
-  }, [conversationId, currentConversationId, setCurrentConversation])
+
+    apiClient
+      .get<{ id: string; conversation_id: string; role: string; content: string; created_at: string }[]>(
+        `/api/v1/conversations/${conversationId}/messages`,
+      )
+      .then((data) => {
+        if (Array.isArray(data)) {
+          useChatStore.getState().setMessages(data)
+        }
+      })
+      .catch(() => {
+        // Conversation may not exist
+      })
+  }, [conversationId])
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {

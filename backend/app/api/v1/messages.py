@@ -13,7 +13,8 @@ from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
 from app.db.session import async_session_factory
 from app.models.user import User
-from app.schemas.message import MessageCreate
+from app.schemas.message import MessageCreate, MessageResponse
+from app.schemas.envelope import EnvelopeResponse
 from app.services.conversation_service import ConversationService
 
 logger = get_logger(__name__)
@@ -84,6 +85,24 @@ async def _trigger_agent_execution(
             ensure_ascii=False,
         )
         await redis_client.publish(channel, error_event)
+
+
+@router.get("/conversations/{conversation_id}/messages")
+async def list_messages(
+    conversation_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> EnvelopeResponse[list[MessageResponse]]:
+    conversation = await ConversationService.get_for_user(
+        db, str(current_user.id), conversation_id
+    )
+    if conversation is None:
+        raise NotFoundException(message="Conversation not found")
+
+    messages = await ConversationService.list_messages(db, conversation_id)
+    return EnvelopeResponse(
+        data=[MessageResponse.model_validate(m) for m in messages]
+    )
 
 
 @router.post("/conversations/{conversation_id}/messages", status_code=202)
