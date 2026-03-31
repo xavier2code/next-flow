@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Docker Deployment
-status: executing
-stopped_at: Completed 09-02-PLAN
-last_updated: "2026-03-31T19:54:12.172Z"
+status: in-progress
+stopped_at: Completed 09-01-PLAN
+last_updated: "2026-03-31T19:59:41.000Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 70
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** 让 Agent 能够通过标准化的技能和工具接口，灵活接入多种 LLM 模型和外部服务，可靠地完成复杂任务
-**Current focus:** Phase 09 — frontend-nginx-containerization
+**Current focus:** Phase 09 — Frontend + Nginx Containerization
 
 ## Current Position
 
-Phase: 09 (frontend-nginx-containerization) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Phase: 9
+Plan: 1 (of 2)
+Status: In progress
 Last activity: 2026-03-31
 
-Progress: [██████████░░░░░░░░░░] 70% (22 v1.0 plans done, 0/6 v1.1 plans done)
+Progress: [████████████░░░░░░░░] 75% (22 v1.0 plans done, 1/6 v1.1 plans done)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 22 (v1.0)
-- v1.1 plans completed: 0
+- Total plans completed: 23 (22 v1.0 + 1 v1.1)
+- v1.1 plans completed: 1
 
 **By Phase (v1.0):**
 
@@ -52,11 +52,7 @@ Progress: [██████████░░░░░░░░░░] 70% (22
 | 7. Frontend | 4 | Complete |
 | Phase 08 P01 | 3504 | 5 tasks | 6 files |
 | Phase 08 P02 | 31m | 5 tasks | 2 files |
-| Phase 11 P01 | 120 | 1 tasks | 3 files |
-| Phase 11 P03 | 113 | 1 tasks | 5 files |
-| Phase 11 P02 | 163 | 2 tasks | 13 files |
-| Phase 11 P04 | 1 | 1 tasks | 4 files |
-| Phase 09 P02 | 1min | 2 tasks | 2 files |
+| Phase 09 P01 | 5m | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -74,19 +70,8 @@ Recent decisions affecting current work:
 - [Phase 08]: uv sync --frozen for reproducible Docker builds from existing uv.lock
 - [Phase 08]: PYTHONPATH=/app added to Dockerfile for Alembic module resolution
 - [Phase 08]: SkillSandbox reads COMPOSE_NETWORK_NAME env var for Docker Compose DNS resolution
-- [Phase 11]: Reused ThinkTagFilter from event_mapper.py for reasoning/text separation in SSE context
-- [Phase 11]: Data Stream Protocol v2 event format for Vercel AI SDK useChat consumption
-- [Phase 11]: SSE endpoint replaces REST POST + WebSocket push for agent streaming
-- [Phase 11]: SSE-only streaming eliminates Redis pub/sub dependency for chat; WebSocket router and ConnectionManager removed from active code
-- [Phase 11]: useChat fetch override for auth token injection (localStorage access for fresh token on each request)
-- [Phase 11]: SidePanel uses Date.now() for tool invocation timestamps (useChat toolInvocations lack timestamp field)
-- [Phase 11]: ThinkingEntry display removed from SidePanel -- useChat does not surface reasoning parts in UIMessage
-- [Phase 11]: Reasoning entries render before tool entries in SidePanel (reasoning precedes tool calls in agent flow)
-- [Phase 11]: ReasoningEntry card defaults open when streaming, collapsed when done
-- [Phase 11]: Regenerate button only visible when status is idle and messages exist
-- [Phase 09]: Nginx config uses conf.d/default.conf drop-in (preserves default nginx.conf worker/error settings)
-- [Phase 09]: proxy_buffering off on entire /api/v1/ block (harmless for regular API, critical for SSE)
-- [Phase 09]: Stale /ws WebSocket proxy removed from Vite dev config (Phase 11 replaced WebSocket with SSE)
+- [Phase 09]: Nginx master runs as root for port 80 binding, workers drop to nginx user (standard nginx model)
+- [Phase 09]: event_mapper.py relocated to services/ but ws/ directory NOT deleted (still active in main.py)
 
 ### Pending Todos
 
@@ -97,10 +82,12 @@ None.
 - SkillSandbox network parameter needs code change in sandbox.py (network="nextflow" for DNS resolution)
 - WebSocket proxy through Nginx requires exact header configuration (Upgrade, Connection, proxy_http_version)
 - Alembic migration on container startup needs testing with existing migration chain
+- CONTEXT.md D-05 incorrectly claims ws/ is dead code -- ws/ is actively imported by main.py and deps.py
+- backend/app/api/ws/ cleanup deferred (requires proper plan to decommission WebSocket infrastructure)
 
 ## Session Continuity
 
-Last session: 2026-03-31T19:54:12.170Z
-Stopped at: Completed 09-02-PLAN
+Last session: 2026-03-31T19:54:41.000Z
+Stopped at: Completed 09-01-PLAN
 Resume file: None
 Next step: `/gsd:execute-phase`

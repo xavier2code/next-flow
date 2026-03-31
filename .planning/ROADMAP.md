@@ -5,7 +5,6 @@
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-31)
   - [Archive](milestones/v1.0-ROADMAP.md) | [Requirements](milestones/v1.0-REQUIREMENTS.md)
 - 🚧 **v1.1 Docker Deployment** — Phases 8-10 (in progress)
-- 📋 **v1.2 Vercel AI SDK Integration** — Phase 11 (gap closure in progress)
 
 ## Phases
 
@@ -30,12 +29,6 @@
 - [ ] **Phase 9: Frontend + Nginx Containerization** — Build React SPA and serve behind Nginx reverse proxy
 - [ ] **Phase 10: Production Compose & Hardening** — Wire all services together with docker-compose.prod.yml and harden for production
 
-### 📋 v1.2 Vercel AI SDK Integration (Gap Closure)
-
-**Milestone Goal:** Replace custom WebSocket streaming with Vercel AI SDK Data Stream Protocol v2 + useChat hook for a more robust, feature-rich chat experience.
-
-- [x] **Phase 11: Vercel AI SDK Deep Integration** — Replace REST+WebSocket+Redis pub/sub streaming with SSE Data Stream v2 + useChat hook (gap closure) (completed 2026-03-31)
-
 ## Phase Details
 
 ### Phase 8: Backend Containerization
@@ -48,27 +41,28 @@
   3. `docker inspect` shows the container's HEALTHCHECK hitting `/api/v1/health` and reporting healthy
   4. Sending SIGTERM to the container completes in-flight requests before shutting down (no dropped connections)
   5. `.dockerignore` prevents `.venv`, `__pycache__`, `.env`, `.pytest_cache`, and `.git` from entering the build context
-**Plans**: 2 plans
+**Plans**: TBD
 
 Plans:
 - [x] 08-01: Backend Dockerfile and .dockerignore
 - [x] 08-02: Entrypoint script, health check, and graceful shutdown
 
 ### Phase 9: Frontend + Nginx Containerization
-**Goal**: The React SPA is built inside Docker and served by Nginx, which also reverse-proxies API traffic to the backend
+**Goal**: The React SPA is built inside Docker and served by Nginx, which also reverse-proxies API and WebSocket traffic to the backend
 **Depends on**: Phase 8
 **Requirements**: FRNT-01, FRNT-02, FRNT-03, FRNT-04, FRNT-05, FRNT-06
 **Success Criteria** (what must be TRUE):
-  1. `docker build -t nextflow-frontend frontend/` produces an Nginx-based image serving the React SPA with client-side routing working (page refresh does not return 404)
+  1. `docker build -t nextflow-frontend .` produces an Nginx-based image serving the React SPA with client-side routing working (page refresh does not return 404)
   2. Nginx proxies `/api/v1/` requests to the backend container and the REST API responds correctly through the proxy
-  3. SSE streaming through `/api/v1/` route to the backend with token-by-token streaming (proxy_buffering off)
+  3. WebSocket connections through `/ws/` route to the backend with token-by-token streaming visible in the browser
   4. Static assets (JS, CSS, SVG) are served with gzip compression enabled
   5. `.dockerignore` prevents `node_modules`, `dist`, and `.git` from entering the build context
-**Plans**: 2 plans
+**Plans**: TBD
+**UI hint**: yes
 
 Plans:
-- [ ] 09-01-PLAN.md — Frontend Dockerfile, .dockerignore, and event_mapper.py relocation
-- [x] 09-02-PLAN.md — Nginx configuration (SPA fallback, API proxy, SSE passthrough, gzip) and Vite dev proxy cleanup
+- [x] 09-01: Frontend Dockerfile and .dockerignore
+- [ ] 09-02: Nginx configuration (SPA fallback, API proxy, WebSocket proxy, gzip)
 
 ### Phase 10: Production Compose & Hardening
 **Goal**: A single `docker-compose up` command brings up the entire NextFlow platform with all services healthy, properly networked, and hardened for production traffic
@@ -87,32 +81,10 @@ Plans:
 - [ ] 10-01: Production docker-compose.yml with service dependencies, networking, and environment template
 - [ ] 10-02: Production hardening (caching headers, security headers, resource limits, structured logging)
 
-### Phase 11: Vercel AI SDK Deep Integration
-**Goal**: Replace the custom REST+WebSocket+Redis pub/sub streaming architecture with Vercel AI SDK Data Stream Protocol v2 (SSE) + useChat hook, reducing frontend code by 60%+ while gaining built-in abort, regenerate, retry, tool invocation UI, and reasoning display
-**Depends on**: v1.0 complete (Phases 1-7)
-**Requirements**: SC-01, SC-02, SC-03, SC-04, SC-05, SC-06, SC-07
-**Success Criteria** (what must be TRUE):
-  1. `POST /api/v1/conversations/{id}/chat` returns an SSE stream in Data Stream Protocol v2 format with `x-vercel-ai-ui-message-stream: v1` header
-  2. Frontend uses `useChat` from `@ai-sdk/react` for all chat interactions — no custom WebSocket or Zustand streaming state
-  3. LangGraph `astream_events` are mapped to protocol part types: `text-delta`, `reasoning-delta`, `tool-input-start/available`, `tool-output-available`, `finish`
-  4. ThinkTagFilter logic preserved — `<think...</think` content maps to `reasoning-delta` events
-  5. Abort (stop generation) and regenerate work correctly through the SSE transport
-  6. Tool calls display in the UI using useChat's built-in `toolInvocations` on UIMessage
-  7. Conversation CRUD REST APIs remain unchanged
-**Plans**: 5 plans (3 original + 2 gap closure)
-**UI hint**: yes
-
-Plans:
-- [x] 11-01-PLAN.md — Backend SSE chat endpoint with Data Stream v2 mapper
-- [x] 11-02-PLAN.md — Frontend useChat integration + dead code removal
-- [x] 11-03-PLAN.md — Backend WebSocket infrastructure cleanup
-- [x] 11-04-PLAN.md — Reasoning display + Regenerate button + backend reasoning-end fix
-- [ ] 11-05-PLAN.md — Fix stale test file for current chat-store
-
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 8 → 9 → 10 → 11
+Phases execute in numeric order: 8 → 9 → 10
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -123,7 +95,6 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 5. MCP Integration | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 6. Skill System | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 7. Frontend | v1.0 | 4/4 | Complete | 2026-03-31 |
-| 8. Backend Containerization | v1.1 | 0/2 | Not started | - |
-| 9. Frontend + Nginx Containerization | v1.1 | 0/2 | Not started | - |
+| 8. Backend Containerization | v1.1 | 2/2 | Complete | 2026-03-31 |
+| 9. Frontend + Nginx Containerization | v1.1 | 1/2 | In progress | - |
 | 10. Production Compose & Hardening | v1.1 | 0/2 | Not started | - |
-| 11. Vercel AI SDK Deep Integration | v1.2 | 4/5 | Complete    | 2026-03-31 |

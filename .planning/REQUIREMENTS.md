@@ -16,12 +16,12 @@
 
 ### Frontend + Nginx
 
-- [ ] **FRNT-01**: 前端 Dockerfile 使用多阶段构建（node:22-alpine 构建 → nginx:1.27-alpine 运行时）
-- [x] **FRNT-02**: Nginx 配置 SPA 回退路由（`try_files $uri $uri/ /index.html`），客户端路由刷新不返回 404
-- [x] **FRNT-03**: Nginx 反向代理 `/api/v1/` 到后端容器（backend:8000）
-- [x] **FRNT-04**: Nginx 代理 `/ws/` WebSocket 路由到后端，配置 Upgrade/Connection 头和 86400s 超时
-- [ ] **FRNT-05**: 前端 .dockerignore 排除 node_modules、dist、.git 等
-- [x] **FRNT-06**: Nginx 启用 gzip 压缩（text/css, application/javascript, application/json, image/svg+xml）
+- [x] **FRNT-01**: 前端 Dockerfile 使用多阶段构建（node:22-alpine 构建 → nginx:1.27-alpine 运行时）
+- [ ] **FRNT-02**: Nginx 配置 SPA 回退路由（`try_files $uri $uri/ /index.html`），客户端路由刷新不返回 404
+- [ ] **FRNT-03**: Nginx 反向代理 `/api/v1/` 到后端容器（backend:8000）
+- [ ] **FRNT-04**: Nginx 代理 `/ws/` WebSocket 路由到后端，配置 Upgrade/Connection 头和 86400s 超时
+- [x] **FRNT-05**: 前端 .dockerignore 排除 node_modules、dist、.git 等
+- [ ] **FRNT-06**: Nginx 启用 gzip 压缩（text/css, application/javascript, application/json, image/svg+xml）
 
 ### Production Docker Compose
 
@@ -69,12 +69,12 @@
 | BACK-04 | Phase 8 | Complete |
 | BACK-05 | Phase 8 | Complete |
 | BACK-06 | Phase 8 | Complete |
-| FRNT-01 | Phase 9 | Pending |
-| FRNT-02 | Phase 9 | Complete |
-| FRNT-03 | Phase 9 | Complete |
-| FRNT-04 | Phase 9 | Complete |
-| FRNT-05 | Phase 9 | Pending |
-| FRNT-06 | Phase 9 | Complete |
+| FRNT-01 | Phase 9 | Complete |
+| FRNT-02 | Phase 9 | Pending |
+| FRNT-03 | Phase 9 | Pending |
+| FRNT-04 | Phase 9 | Pending |
+| FRNT-05 | Phase 9 | Complete |
+| FRNT-06 | Phase 9 | Pending |
 | COMP-01 | Phase 10 | Pending |
 | COMP-02 | Phase 10 | Pending |
 | COMP-03 | Phase 10 | Pending |
