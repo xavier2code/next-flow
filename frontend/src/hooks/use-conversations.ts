@@ -49,6 +49,17 @@ export function useUpdateConversation() {
   })
 }
 
+export function useMessages(conversationId: string | null) {
+  return useQuery<import('@/types/api').Message[]>({
+    queryKey: ['messages', conversationId],
+    queryFn: () =>
+      apiClient.get<import('@/types/api').Message[]>(
+        `/api/v1/conversations/${conversationId}/messages`,
+      ),
+    enabled: !!conversationId,
+  })
+}
+
 export function useDeleteConversation() {
   const queryClient = useQueryClient()
 

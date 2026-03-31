@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from '@ai-sdk/react'
 import { useLocation, useNavigate } from 'react-router'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
-import { useCreateConversation, useUpdateConversation, useConversation } from '@/hooks/use-conversations'
+import { useCreateConversation, useUpdateConversation, useConversation, useMessages } from '@/hooks/use-conversations'
 import { RefreshCw } from 'lucide-react'
 import AgentDropdown from './AgentDropdown'
 import ChatMessage from './ChatMessage'
@@ -31,6 +32,18 @@ export default function ChatView({ conversationId }: ChatViewProps) {
   // Fetch conversation detail to restore agent selection
   const { data: conversationDetail } = useConversation(conversationId ?? null)
 
+  // Fetch historical messages and convert to UIMessage format
+  const { data: historyMessages } = useMessages(conversationId ?? null)
+  const initialMessages = useMemo<UIMessage[]>(() => {
+    if (!historyMessages) return []
+    return historyMessages.map((m) => ({
+      id: m.id,
+      role: m.role as UIMessage['role'],
+      parts: [{ type: 'text' as const, text: m.content }],
+      createdAt: new Date(m.created_at),
+    }))
+  }, [historyMessages])
+
   // Sync selectedAgentId with conversation's agent_id
   useEffect(() => {
     if (conversationDetail) {
@@ -43,7 +56,7 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     ? `/api/v1/conversations/${conversationId}/chat`
     : undefined
 
-  const { messages, sendMessage, regenerate, stop, status, error } = useChat({
+  const { messages, sendMessage, setMessages, regenerate, stop, status, error } = useChat({
     id: conversationId ?? 'new',
     transport: chatApi
       ? new DefaultChatTransport({
@@ -66,6 +79,20 @@ export default function ChatView({ conversationId }: ChatViewProps) {
   })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Load historical messages into useChat when they arrive from API
+  useEffect(() => {
+    if (historyMessages && historyMessages.length > 0 && messages.length === 0) {
+      setMessages(
+        historyMessages.map((m) => ({
+          id: m.id,
+          role: m.role as UIMessage['role'],
+          parts: [{ type: 'text' as const, text: m.content }],
+          createdAt: new Date(m.created_at),
+        })),
+      )
+    }
+  }, [historyMessages, messages.length, setMessages])
 
   // Sync conversation ID when URL changes
   useEffect(() => {
