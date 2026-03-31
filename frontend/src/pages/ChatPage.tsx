@@ -3,5 +3,5 @@ import ChatView from '@/components/chat/ChatView'
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>()
-  return <ChatView conversationId={id} />
+  return <ChatView key={id ?? 'new'} conversationId={id} />
 }

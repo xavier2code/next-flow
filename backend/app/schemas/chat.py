@@ -1,6 +1,6 @@
 """Schema for the SSE chat endpoint."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ChatRequest(BaseModel):
@@ -13,6 +13,26 @@ class ChatRequest(BaseModel):
     """
 
     id: str | None = None
-    messages: list[dict] | None = None  # UIMessage[] from useChat -- ignored by backend
+    messages: list[dict] | None = None  # UIMessage[] from useChat
     message: str | None = None  # Alias for content (useChat may send either)
-    content: str = Field(min_length=1, max_length=10000, description="User message text")
+    content: str | None = Field(default=None, max_length=10000, description="User message text")
+
+    @model_validator(mode="after")
+    def extract_content(self) -> "ChatRequest":
+        """Extract content from messages if content field is missing."""
+        if self.content:
+            return self
+        # Try message field first
+        if self.message:
+            self.content = self.message
+            return self
+        # Extract from last user message in messages array
+        if self.messages:
+            for msg in reversed(self.messages):
+                if msg.get("role") == "user":
+                    parts = msg.get("parts", [])
+                    for part in parts:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            self.content = part.get("text", "")
+                            return self
+        raise ValueError("No content found in request. Provide 'content', 'message', or 'messages' with a user message.")

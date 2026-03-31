@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { useCreateConversation, useUpdateConversation, useConversation } from '@/hooks/use-conversations'
 import { RefreshCw } from 'lucide-react'
 import AgentDropdown from './AgentDropdown'
@@ -18,6 +19,8 @@ interface ChatViewProps {
 
 export default function ChatView({ conversationId }: ChatViewProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const getAccessToken = useAuthStore((s) => s.accessToken)
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation)
   const sidePanelOpen = useUiStore((s) => s.sidePanelOpen)
   const setSidePanelOpen = useUiStore((s) => s.setSidePanelOpen)
@@ -35,24 +38,22 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     }
   }, [conversationDetail?.agent_id])
 
-  const activeConversationId = conversationId ?? useChatStore((s) => s.currentConversationId)
-
-  // useChat configuration
-  const chatApi = activeConversationId
-    ? `/api/v1/conversations/${activeConversationId}/chat`
+  // useChat — only configure transport when conversationId is available (key remount guarantees this)
+  const chatApi = conversationId
+    ? `/api/v1/conversations/${conversationId}/chat`
     : undefined
 
   const { messages, sendMessage, regenerate, stop, status, error } = useChat({
+    id: conversationId ?? 'new',
     transport: chatApi
       ? new DefaultChatTransport({
           api: chatApi,
           fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-            const token = localStorage.getItem('access_token')
             return fetch(input, {
               ...init,
               headers: {
                 ...init?.headers,
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${getAccessToken}`,
                 'Content-Type': 'application/json',
               },
             })
@@ -73,6 +74,19 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     }
   }, [conversationId, setCurrentConversation])
 
+  // Send pending message passed via navigate state after remount
+  const pendingTextRef = useRef<string | null>(
+    (location.state as { pendingText?: string })?.pendingText ?? null,
+  )
+  useEffect(() => {
+    if (pendingTextRef.current && chatApi) {
+      const text = pendingTextRef.current
+      pendingTextRef.current = null
+      navigate(location.pathname, { replace: true })
+      setTimeout(() => sendMessage({ text }), 0)
+    }
+  }, [chatApi, sendMessage, navigate, location.pathname])
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -88,36 +102,29 @@ export default function ChatView({ conversationId }: ChatViewProps) {
 
   const handleAgentChange = (agentId: string) => {
     setSelectedAgentId(agentId)
-    if (activeConversationId) {
+    if (conversationId) {
       updateConversation.mutate({
-        id: activeConversationId,
+        id: conversationId,
         agent_id: agentId,
       })
     }
   }
 
   const handleSend = async (text: string) => {
-    let targetConversationId = activeConversationId
-
     // Step 1: Ensure we have a conversation
-    if (!targetConversationId) {
+    if (!conversationId) {
       try {
         const result = await createConversation.mutateAsync({
           title: text.slice(0, 50),
           agent_id: selectedAgentId ?? undefined,
         })
-        targetConversationId = result.id
-        setCurrentConversation(targetConversationId)
-        navigate(`/conversations/${targetConversationId}`)
-        // After navigation, the useChat api will update via activeConversationId
-        // Send the message on next tick so the hook reconfigures with the new conversation
-        setTimeout(() => {
-          sendMessage({ text })
-        }, 0)
-        return
+        setCurrentConversation(result.id)
+        // Navigate with pendingText — key remount will create fresh useChat, then effect sends the message
+        navigate(`/conversations/${result.id}`, { state: { pendingText: text } })
       } catch {
-        return
+        // Creation failed
       }
+      return
     }
 
     // Step 2: Send via useChat
