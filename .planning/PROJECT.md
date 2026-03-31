@@ -26,11 +26,11 @@
 - [x] 完整实现 MCP（Model Context Protocol）协议，无缝对接外部工具与服务 — Validated in Phase 5: MCP Client (streamable HTTP + SSE fallback), MCPManager (lifecycle/health/reconnect), MCPToolHandler bridge, Admin API with JWT auth
 - [x] 具备短期/长期记忆能力，支持对话上下文与知识库检索 — Validated in Phase 4: Three-layer memory (Redis sliding window + Store semantic search + AgentState), workflow integration
 - [ ] 支持水平扩展与高并发场景
-- [ ] 对话模块：消息展示、输入框、流式响应渲染、思考过程展示
-- [ ] 技能管理模块：技能列表、技能市场、技能配置与启用/禁用
-- [ ] MCP 管理模块：MCP 服务器注册、连接状态监控、工具列表展示
-- [ ] Agent 配置模块：模型选择、提示词编辑、参数调节
-- [ ] 用户系统模块：登录/注册、个人设置、对话历史管理
+- [x] 对话模块：消息展示、输入框、流式响应渲染、思考过程展示 — Validated in Phase 7: ChatView with streaming Markdown, thinking/tool event side panel, conversation sidebar
+- [x] 技能管理模块：技能列表、技能市场、技能配置与启用/禁用 — Validated in Phase 7: SkillList with upload, SkillDetail with enable/disable toggle
+- [x] MCP 管理模块：MCP 服务器注册、连接状态监控、工具列表展示 — Validated in Phase 7: MCPServerList with StatusDot, MCPServerDetail with tool discovery
+- [x] Agent 配置模块：模型选择、提示词编辑、参数调节 — Validated in Phase 7: AgentDetail with model select, system prompt, temperature slider
+- [x] 用户系统模块：登录/注册、个人设置、对话历史管理 — Validated in Phase 7: LoginPage/RegisterPage, SettingsPage with theme toggle, ConversationList
 
 ### Out of Scope
 
@@ -44,7 +44,7 @@
 
 **技术栈（已确定）：**
 
-- **前端**：React 18 + TypeScript + Vite + shadcn/ui（Radix UI + TailwindCSS）+ Zustand
+- **前端**：React 19 + TypeScript + Vite 7 + shadcn/ui（base-ui + TailwindCSS v4）+ Zustand 5
 - **后端**：Python + FastAPI + LangGraph（Agent 编排）+ LangChain（LLM 集成）
 - **数据库**：PostgreSQL（业务数据）、Redis（缓存/会话）、Qdrant/Milvus（向量检索）
 - **任务队列**：Celery + Redis
@@ -80,8 +80,8 @@
 |----------|-----------|---------|
 | LangGraph 作为 Agent 编排引擎 | 有状态图工作流天然支持条件边、循环、状态传递，适合复杂 Agent 流程 | — Validated: 4-node pipeline with conditional edges, checkpointer (Phase 2) |
 | LangChain 作为 LLM 抽象层 | 统一接口支持多模型切换，降低模型锁定风险 | — Validated: OpenAI + Ollama factory, Plan/Respond nodes (Phase 2) |
-| shadcn/ui 作为前端组件库 | Radix UI 无障碍 + TailwindCSS 灵活样式，社区活跃 | — Pending |
-| Zustand 状态管理 | 轻量级，API 简洁，适合中等复杂度应用 | — Pending |
+| shadcn/ui 作为前端组件库 | base-ui 无障碍 + TailwindCSS 灵活样式，社区活跃 | — Validated: 20 components, dark/light theme, all management pages (Phase 7) |
+| Zustand 状态管理 | 轻量级，API 简洁，适合中等复杂度应用 | — Validated: auth-store, ui-store, chat-store slice pattern (Phase 7) |
 | MCP 协议集成 | 标准化工具协议，生态正在快速扩展，避免自建工具协议的维护成本 | — Validated: MCPClient + MCPManager + MCPToolHandler + Admin API (Phase 5) |
 | Qdrant/Milvus 向量数据库 | 高性能向量检索，支持长期记忆的语义搜索 | — Pending |
 | 三层记忆架构 | 短期（Redis）+ 长期（向量库）+ 工作记忆（AgentState），平衡性能与上下文完整性 | — Validated: ShortTermMemory + LongTermMemory + MemoryService (Phase 4) |
