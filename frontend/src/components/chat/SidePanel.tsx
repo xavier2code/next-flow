@@ -3,16 +3,51 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { useChatStore } from '@/stores/chat-store'
 import { useUiStore } from '@/stores/ui-store'
+import ThinkingEntry from './ThinkingEntry'
+import ToolCallCard from './ToolCallCard'
+import ToolResultCard from './ToolResultCard'
+
+type EntryType = 'thinking' | 'tool_call' | 'tool_result'
+
+interface CombinedEntry {
+  id: string
+  entryType: EntryType
+  timestamp: number
+  // Thinking
+  content?: string
+  // Tool call
+  name?: string
+  args?: Record<string, unknown>
+  // Tool result
+  result?: unknown
+}
 
 export default function SidePanel() {
   const { thinkingEntries, toolCallEntries, toolResultEntries } = useChatStore()
   const setSidePanelOpen = useUiStore((s) => s.setSidePanelOpen)
 
   // Combine and sort all entries by timestamp
-  const allEntries = [
-    ...thinkingEntries.map((e) => ({ ...e, entryType: 'thinking' as const })),
-    ...toolCallEntries.map((e) => ({ ...e, entryType: 'tool_call' as const })),
-    ...toolResultEntries.map((e) => ({ ...e, entryType: 'tool_result' as const })),
+  const allEntries: CombinedEntry[] = [
+    ...thinkingEntries.map((e) => ({
+      id: e.id,
+      entryType: 'thinking' as const,
+      timestamp: e.timestamp,
+      content: e.content,
+    })),
+    ...toolCallEntries.map((e) => ({
+      id: e.id,
+      entryType: 'tool_call' as const,
+      timestamp: e.timestamp,
+      name: e.name,
+      args: e.args,
+    })),
+    ...toolResultEntries.map((e) => ({
+      id: e.id,
+      entryType: 'tool_result' as const,
+      timestamp: e.timestamp,
+      name: e.name,
+      result: e.result,
+    })),
   ].sort((a, b) => a.timestamp - b.timestamp)
 
   return (
@@ -40,11 +75,38 @@ export default function SidePanel() {
             </div>
           ) : (
             <div className="space-y-3">
-              {allEntries.map((entry) => (
-                <div key={entry.id} className="text-xs text-muted-foreground">
-                  [{entry.entryType}] {entry.id.slice(0, 8)}
-                </div>
-              ))}
+              {allEntries.map((entry) => {
+                if (entry.entryType === 'thinking') {
+                  return (
+                    <ThinkingEntry
+                      key={entry.id}
+                      content={entry.content ?? ''}
+                      timestamp={entry.timestamp}
+                    />
+                  )
+                }
+                if (entry.entryType === 'tool_call') {
+                  return (
+                    <ToolCallCard
+                      key={entry.id}
+                      name={entry.name ?? ''}
+                      args={entry.args ?? {}}
+                      timestamp={entry.timestamp}
+                    />
+                  )
+                }
+                if (entry.entryType === 'tool_result') {
+                  return (
+                    <ToolResultCard
+                      key={entry.id}
+                      name={entry.name ?? ''}
+                      result={entry.result}
+                      timestamp={entry.timestamp}
+                    />
+                  )
+                }
+                return null
+              })}
             </div>
           )}
         </div>
