@@ -42,6 +42,8 @@
 
 **Phase 8 complete (2026-03-31):** Backend Dockerfile — multi-stage build (521MB), python:3.12-slim-bookworm, Gunicorn + UvicornWorker, non-root user, HEALTHCHECK, Alembic auto-migration entrypoint, SkillSandbox Docker Compose network support.
 
+**Phase 11 complete (2026-04-01):** Vercel AI SDK integration — SSE Data Stream Protocol v2 endpoint, useChat hook replacing WebSocket/Zustand streaming, reasoning display pipeline, Regenerate button, WebSocket infrastructure removal.
+
 **Known gaps:**
 - SKIL-04 (hot-update): Skill lifecycle CRUD exists but hot-update in production requires Docker Watch integration
 - UI UAT pending: Frontend build verified (zero TS errors, 938KB bundle) but manual end-to-end testing requires running backend + frontend together
@@ -75,6 +77,10 @@
 - ✓ 流式对话界面 + Markdown 渲染 + thinking/tool 事件侧边栏 — v1.0 (Phase 7)
 - ✓ 管理面板（Agent/Skills/MCP tabs）+ 设置页面 — v1.0 (Phase 7)
 - ✓ 登录/注册页面 + 认证持久化 + 主题切换 — v1.0 (Phase 7)
+- ✓ SSE Data Stream Protocol v2 聊天端点 — v1.1 (Phase 11)
+- ✓ useChat hook 替代 WebSocket/Zustand 流式架构 — v1.1 (Phase 11)
+- ✓ Reasoning 显示 + Regenerate 按钮 — v1.1 (Phase 11)
+- ✓ WebSocket 基础设施移除 — v1.1 (Phase 11)
 
 ### Active
 
