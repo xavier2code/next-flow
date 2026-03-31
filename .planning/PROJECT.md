@@ -10,6 +10,18 @@
 
 让 Agent 能够通过标准化的技能和工具接口，灵活接入多种 LLM 模型和外部服务，可靠地完成复杂任务——这是系统存在的唯一理由。如果 Agent 引擎不能正确编排工具调用并返回有效结果，其他一切都没有意义。
 
+## Current Milestone: v1.1 Docker 部署就绪
+
+**Goal:** 让 `docker-compose up` 一键拉起整套 NextFlow 服务（前端 + 后端 + 基础设施），可直接用于生产部署
+
+**Target features:**
+- 后端 FastAPI 服务 Dockerfile（多阶段构建、非 root 用户、健康检查）
+- 前端 React 构建产物由 Nginx 托管（多阶段构建：Node 构建 → Nginx 托管）
+- Nginx 反向代理（统一入口、API 代理、前端静态文件、WebSocket 路由）
+- 生产级 docker-compose.yml（服务依赖、健康检查、重启策略、资源限制）
+- 多环境配置模板（.env 文件示例 + 生产配置指南）
+- 开发体验保持不变（docker-compose.dev.yml 仅基础设施，本地开发照旧）
+
 ## Current State
 
 **Shipped: v1.0 MVP (2026-03-31)**
@@ -155,4 +167,4 @@
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-31 after v1.0 milestone completion*
+*Last updated: 2026-03-31 after v1.1 milestone started*
